@@ -48,8 +48,16 @@ jobs:
           $process = Start-Process $exe.FullName -ArgumentList "/S /D=$dest" -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Install exited with $($process.ExitCode)" }
           $installed = Get-Item "$dest/njcb harness.exe"
-          $env:ELECTRON_RUN_AS_NODE = '1'
-          & $installed.FullName -e "if(process.platform !== 'win32' || process.arch !== 'x64') process.exit(1)"
+          Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue
+          $env:NJCB_INSTALLED_EXE = $installed.FullName
+          @'
+          const { spawnSync } = require('node:child_process');
+          const result = spawnSync(process.env.NJCB_INSTALLED_EXE, ['-p', 'process.platform + "/" + process.arch'], {
+            env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, encoding: 'utf8', timeout: 30000
+          });
+          console.log(JSON.stringify({status: result.status, output: result.stdout, stderr: result.stderr, error: result.error?.message}));
+          if (result.status !== 0 || result.stdout?.trim() !== 'win32/x64') process.exit(1);
+          '@ | node
           if ($LASTEXITCODE -ne 0) { throw 'Installed Electron runtime check failed' }
           $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $($exe.Name)" | Set-Content "$out/SHA256.txt" -Encoding ascii
