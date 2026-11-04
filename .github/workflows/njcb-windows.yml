@@ -1,0 +1,58 @@
+name: njcb harness Windows x64
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  installer:
+    runs-on: windows-2022
+    timeout-minutes: 180
+    env:
+      DSH_TELEMETRY_DISABLED: '1'
+      BUILD_VERSION: 0.2.2-alpha.3.20261104.1
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install locked pnpm and project dependencies
+        shell: pwsh
+        run: |
+          npm install --global --force pnpm@11.28.5
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          pnpm install --frozen-lockfile
+      - name: Configure unsigned IT-managed test build
+        shell: pwsh
+        run: |
+          @'
+          DSH_DESKTOP_APP_ID=com.njcb.harness
+          DSH_DESKTOP_AUTO_UPDATE_ENV=test
+          DSH_DESKTOP_MANDATORY_UPDATE_MODE=managed
+          '@ | Set-Content apps/desktop/.env.windows -Encoding utf8
+          pnpm run package:desktop:win:x64:unsigned --check --build-version $env:BUILD_VERSION
+      - name: Build full installer and smoke-test embedded runtime
+        run: pnpm run package:desktop:win:x64:unsigned --build-version $env:BUILD_VERSION
+      - name: Verify and install on clean Windows runner
+        shell: pwsh
+        run: |
+          $out = 'apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts'
+          $exe = Get-Item "$out/njcb-harness-$env:BUILD_VERSION-win-x64-unsigned.exe"
+          $dest = Join-Path $env:RUNNER_TEMP 'njcb-installed'
+          $process = Start-Process $exe.FullName -ArgumentList "/S /D=$dest" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Install exited with $($process.ExitCode)" }
+          $installed = Get-Item "$dest/njcb harness.exe"
+          $env:ELECTRON_RUN_AS_NODE = '1'
+          & $installed.FullName -e "if(process.platform !== 'win32' || process.arch !== 'x64') process.exit(1)"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed Electron runtime check failed' }
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($exe.Name)" | Set-Content "$out/SHA256.txt" -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        with:
+          name: njcb-harness-windows-x64
+          path: |
+            apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/*.exe
+            apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/SHA256.txt
+          include-hidden-files: true
+          if-no-files-found: error
