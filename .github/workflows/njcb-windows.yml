@@ -1,5 +1,10 @@
 name: njcb harness Windows x64
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: [njcb-main]
+    paths:
+      - '.github/workflows/njcb-windows.yml'
 permissions:
   contents: read
 jobs:
