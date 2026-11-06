@@ -73,4 +73,5 @@ jobs:
             ${{ runner.temp }}/njcb-offline-plugins/desktop-pages.json
             ${{ runner.temp }}/njcb-offline-plugins/desktop-ui-*
             ${{ runner.temp }}/njcb-offline-plugins/desktop-capture-*
+            ${{ runner.temp }}/njcb-offline-plugins/desktop-plugins.txt
           if-no-files-found: warn

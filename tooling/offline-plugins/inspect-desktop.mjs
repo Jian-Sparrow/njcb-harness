@@ -25,6 +25,14 @@ for (const page of pages.filter(p => p.type === 'page')) {
       await send('Runtime.evaluate', { expression: 'void window.dshWelcome.skip(); true', returnByValue: true });
       await new Promise(resolve => setTimeout(resolve, 12000));
     }
+    if (page.url.startsWith('dsh-app://')) {
+      const click = await send('Runtime.evaluate', { expression: "(() => { const button = [...document.querySelectorAll('button')].find(el => el.innerText.trim() === 'Plugins'); if (!button) return false; button.click(); return true; })()", returnByValue: true });
+      if (click.result.value === true) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        const plugins = await send('Runtime.evaluate', {expression:'document.body.innerText',returnByValue:true});
+        await fs.writeFile(path.join(output,'desktop-plugins.txt'),plugins.result.value);
+      }
+    }
   } catch (error) {
     await fs.writeFile(path.join(output,`desktop-ui-${index}-error.txt`),error.message);
     console.log(`Renderer ${index} inspection: ${error.message}`);

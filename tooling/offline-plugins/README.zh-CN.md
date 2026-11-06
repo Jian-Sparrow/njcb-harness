@@ -17,7 +17,7 @@
 - `@openviking/dsh-memory-plugin` 需要可访问的 OpenViking 服务。配置 `OPENVIKING_URL`、`OPENVIKING_API_KEY` 或 `%USERPROFILE%\.openviking\ovcli.conf`。此包只带 DSH 插件，不含 OpenViking 服务端、数据库或模型。所选版本不提供 0.5.33 新增的 rule-search 功能。官方说明：https://docs.openviking.ai/en/agent-integrations/17-dsh
 - `@liustack/modlens` 需要插件设置中的视觉模型 API、模型名和密钥；使用内网视觉服务。安装完成不表示已有 OCR/图像理解模型。
 - `dsh-ego-browser` 和 `dsh-univer-office` 的浏览器渲染功能需要本机 Chrome/Chromium/Edge。优先使用目标 Windows 已安装的 Edge；Office 可设置 `browserExecutablePath` 或 `UNIVER_RENDER_BROWSER`，Ego 可设置 `EGO_LINUX_CHROME`。不在线下载浏览器。
-- `dsh-ops` 的 Windows Bash 载荷纳入 npm 依赖快照。PowerShell 由系统/管理员提供，PowerShell 7 不是本包内容；需要 7.x 的能力应提前离线部署对应运行时。
+- `dsh-ops@0.4.1` 的 Windows Bash 载荷纳入 npm 依赖快照。该旧版本可通过当前 Harness 的版本检查及安装检查，但上游新版明确限制宿主 `<0.2.2-0`，且上游尚未确认完整支持 0.2.2。因此此插件仅作为待验收项提供，建议先不启用，单独验收文件/命令工具后再启用；不能以旧版声明较宽推断全面兼容。PowerShell 由系统/管理员提供，PowerShell 7 不是本包内容；需要 7.x 的能力应提前离线部署对应运行时。上游说明：https://github.com/T-Auto/dsh-ops/blob/main/docs/CHANGELOG.md
 - `billion-context` 的压缩和其他调用模型的插件仍需可访问的内网模型服务；插件资源中的远程网页、在线技能仓库、云接口和更新检查不会因为离线安装而变成本地服务。
 - 若组织要求禁用 Univer 匿名遥测，在启动 NJCB Harness 的环境中设置 `DO_NOT_TRACK=1`，或在插件中设置 `telemetry: false`。
 
