@@ -1,0 +1,20 @@
+{
+  "runtime": "0.2.2-alpha.3",
+  "installer": "0.2.2-alpha.3.20261104.1",
+  "platform": "win32-x64",
+  "plugins": {
+    "@linxin666/dsh-client-ui-skill-explorer": "0.4.14",
+    "@linxin666/dsh-client-ui-task-board": "0.4.14",
+    "@liustack/modlens": "3.27.2",
+    "@michengai/dsh-agency-agents": "1.2.25",
+    "@michengai/dsh-pua": "1.0.6",
+    "@michengai/dsh-skills-manager": "1.2.29",
+    "dsh-better-sidebar": "0.28.2",
+    "dsh-context": "0.81.0",
+    "dsh-ego-browser": "0.9.9",
+    "dsh-ops": "0.4.1",
+    "@openviking/dsh-memory-plugin": "0.5.32",
+    "billion-context": "0.1.212",
+    "dsh-univer-office": "0.4.0"
+  }
+}

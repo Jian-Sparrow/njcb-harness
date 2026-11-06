@@ -1,0 +1,73 @@
+name: NJCB offline plugins Windows x64
+on:
+  workflow_dispatch:
+  push:
+    branches: [njcb-main]
+    paths:
+      - '.github/workflows/njcb-offline-plugins.yml'
+      - 'tooling/offline-plugins/**'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  bundle:
+    runs-on: windows-2022
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+      - name: Test read-only loopback registry
+        run: node --test tooling/offline-plugins/serve.test.mjs
+      - name: Build original npm artifact snapshot
+        run: node tooling/offline-plugins/build-bundle.mjs "${{ runner.temp }}/njcb-offline-plugins"
+      - name: Include portable Windows Node and license
+        shell: pwsh
+        run: |
+          $out = '${{ runner.temp }}/njcb-offline-plugins/node'
+          New-Item -ItemType Directory -Force $out | Out-Null
+          Copy-Item (Get-Command node.exe).Source "$out/node.exe"
+          $nodeDir = Split-Path (Get-Command node.exe).Source
+          Copy-Item "$nodeDir/LICENSE" "$out/LICENSE"
+      - name: Download exact installed desktop version
+        uses: actions/download-artifact@v4
+        with:
+          name: njcb-harness-windows-x64
+          run-id: 41799861229
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/njcb-installer
+      - name: Verify cold-cache offline profile install using bundled CLI
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem '${{ runner.temp }}/njcb-installer' -Filter *.exe -Recurse | Select-Object -First 1
+          if ((Get-FileHash $installer.FullName).Hash.ToLowerInvariant() -ne 'c2e8ec6b4602aae579aa685b58b1c58deee85e9cc1ed1b9d38ad4d2272b10207') { throw 'Installer SHA256 mismatch' }
+          ./tooling/offline-plugins/verify-windows.ps1 -Bundle '${{ runner.temp }}/njcb-offline-plugins' -Installer $installer.FullName
+      - name: Archive validated offline package
+        shell: pwsh
+        run: |
+          $dest = '${{ runner.temp }}/delivery'
+          New-Item -ItemType Directory -Force $dest | Out-Null
+          $zip = "$dest/njcb-plugins-13-win-x64-for-0.2.2-alpha.3.zip"
+          & 7z a -tzip -mx=5 $zip '${{ runner.temp }}/njcb-offline-plugins/*'
+          if ($LASTEXITCODE) { throw 'Archive failed' }
+          "$((Get-FileHash $zip).Hash.ToLowerInvariant())  $(Split-Path $zip -Leaf)" | Set-Content "$dest/SHA256.txt" -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        with:
+          name: njcb-offline-plugins-win-x64
+          path: ${{ runner.temp }}/delivery/*
+          if-no-files-found: error
+      - name: Upload diagnosis even if validation fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: njcb-offline-plugin-diagnostics
+          path: |
+            ${{ runner.temp }}/njcb-offline-plugins/*.log
+            ${{ runner.temp }}/njcb-offline-plugins/*logs/**
+            ${{ runner.temp }}/njcb-offline-plugins/*validation*.json
+            ${{ runner.temp }}/njcb-offline-plugins/validated-profile.json
+            ${{ runner.temp }}/njcb-offline-plugins/desktop-pages.json
+          if-no-files-found: warn
