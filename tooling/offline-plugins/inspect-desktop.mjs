@@ -20,6 +20,11 @@ for (const page of pages.filter(p => p.type === 'page')) {
       await fs.writeFile(path.join(output,`desktop-ui-${index}.png`),Buffer.from(capture.data,'base64'));
     } catch (error) { await fs.writeFile(path.join(output,`desktop-capture-${index}.txt`),error.message); }
     console.log(`Captured renderer ${index}: ${page.title}`);
+    if (page.url.endsWith('/renderer/welcome.html')) {
+      // Exercise the shipped "skip sign-in" action so the real workspace is tested without credentials.
+      await send('Runtime.evaluate', { expression: 'void window.dshWelcome.skip(); true', returnByValue: true });
+      await new Promise(resolve => setTimeout(resolve, 12000));
+    }
   } catch (error) {
     await fs.writeFile(path.join(output,`desktop-ui-${index}-error.txt`),error.message);
     console.log(`Renderer ${index} inspection: ${error.message}`);
