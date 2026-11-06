@@ -28,15 +28,17 @@ Start-Sleep 3
 $node = Join-Path $Bundle 'node\node.exe'
 $registry = Start-Process $node -ArgumentList "`"$Bundle\serve.mjs`"" -RedirectStandardOutput "$Bundle\registry-stdout.log" -RedirectStandardError "$Bundle\registry-stderr.log" -PassThru
 $rules = @()
+$firewallProfiles = Get-NetFirewallProfile | Select-Object Name, Enabled
 try {
   for ($i=0; $i -lt 20; $i++) {
     try { $null = Invoke-RestMethod 'http://127.0.0.1:4873/-/ping'; break } catch { Start-Sleep 1 }
   }
   foreach ($program in @($exe, $node)) {
     $name = 'NJCB-offline-test-' + [guid]::NewGuid().ToString()
-    $null = New-NetFirewallRule -DisplayName $name -Direction Outbound -Program $program -Action Block -RemoteAddress '0.0.0.0-126.255.255.255','128.0.0.0-255.255.255.255','::/0'
+    $null = New-NetFirewallRule -DisplayName $name -Direction Outbound -Program $program -Action Block -RemoteAddress '1.0.0.0-126.255.255.255','128.0.0.0-254.255.255.255','2000::/3'
     $rules += $name
   }
+  Set-NetFirewallProfile -All -Enabled True
   & $node -e "fetch('https://registry.npmjs.org/',{signal:AbortSignal.timeout(4000)}).then(()=>{console.error('Internet unexpectedly reachable');process.exit(1)}).catch(()=>console.log('External network blocked'))"
   if ($LASTEXITCODE) { throw 'Offline firewall check failed' }
   & (Join-Path $Bundle 'Install-plugins.ps1') -InstallDir $dest
@@ -57,6 +59,8 @@ try {
     $pages = Invoke-RestMethod 'http://127.0.0.1:49317/json/list'
     $pages | ConvertTo-Json -Depth 10 | Set-Content "$Bundle\desktop-pages.json" -Encoding utf8
     if (!($pages | Where-Object { $_.type -eq 'page' })) { throw 'No desktop renderer page was created.' }
+    & $node (Join-Path $PSScriptRoot 'inspect-desktop.mjs') $Bundle
+    if ($LASTEXITCODE) { throw 'Desktop renderer inspection failed' }
   } finally { & taskkill.exe /PID $app.Id /T /F 2>$null | Out-Host }
   $profile = Get-Content (Join-Path $profileDir 'package.json') -Raw | ConvertFrom-Json
   $profile | ConvertTo-Json -Depth 30 | Set-Content "$Bundle\validated-profile.json" -Encoding utf8
@@ -64,6 +68,7 @@ try {
   @{ platform='Windows Server 2022 x64 GitHub runner'; target='Windows 10 22H2 x64'; runtime=$selected.runtime; installed=$installed; coldCache=$true; externalNetworkBlockedForNodeAndElectron=$true; desktopProcessStarted=$true; functionalAcceptance='Not exercised: model APIs, OpenViking service, browser actions, all plugin tools'; time=(Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json -Depth 10 | Set-Content "$Bundle\validation.json" -Encoding utf8
 } finally {
   foreach ($rule in $rules) { Remove-NetFirewallRule -DisplayName $rule }
+  foreach ($state in $firewallProfiles) { Set-NetFirewallProfile -Name $state.Name -Enabled $state.Enabled }
   if (!$registry.HasExited) { Stop-Process -Id $registry.Id -Force }
   if (Test-Path "$userData\logs") { Copy-Item "$userData\logs" "$Bundle\desktop-logs" -Recurse }
   if (Test-Path "$profileDir\.plugin-manager\logs") { Copy-Item "$profileDir\.plugin-manager\logs" "$Bundle\install-logs" -Recurse }
