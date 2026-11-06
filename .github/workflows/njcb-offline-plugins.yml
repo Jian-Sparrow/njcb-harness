@@ -40,6 +40,7 @@ jobs:
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/njcb-installer
       - name: Verify cold-cache offline profile install using bundled CLI
+        timeout-minutes: 10
         shell: pwsh
         run: |
           $installer = Get-ChildItem '${{ runner.temp }}/njcb-installer' -Filter *.exe -Recurse | Select-Object -First 1
@@ -70,4 +71,6 @@ jobs:
             ${{ runner.temp }}/njcb-offline-plugins/*validation*.json
             ${{ runner.temp }}/njcb-offline-plugins/validated-profile.json
             ${{ runner.temp }}/njcb-offline-plugins/desktop-pages.json
+            ${{ runner.temp }}/njcb-offline-plugins/desktop-ui-*
+            ${{ runner.temp }}/njcb-offline-plugins/desktop-capture-*
           if-no-files-found: warn
