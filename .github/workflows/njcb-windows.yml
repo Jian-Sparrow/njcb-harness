@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 180
     env:
       DSH_TELEMETRY_DISABLED: '1'
-      BUILD_VERSION: 0.2.2-alpha.3.20261109.1
+      BUILD_VERSION: 0.2.2-alpha.3.20261109.2
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +47,17 @@ jobs:
           $dest = Join-Path $env:RUNNER_TEMP 'njcb-installed'
           $process = Start-Process $exe.FullName -ArgumentList "/S /D=$dest" -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Install exited with $($process.ExitCode)" }
+          $uninstallKeys = foreach ($hive in 'HKCU:', 'HKLM:') {
+            foreach ($prefix in 'Software', 'Software\WOW6432Node') {
+              "$hive\$prefix\Microsoft\Windows\CurrentVersion\Uninstall\*"
+            }
+          }
+          $entries = @(Get-ItemProperty -Path $uninstallKeys -ErrorAction SilentlyContinue |
+            Where-Object { $_.DisplayName -eq 'njcb harness' })
+          if ($entries.Count -ne 1 -or $entries[0].Publisher -cne '南京银行') {
+            throw "Unexpected njcb harness uninstall registration: count=$($entries.Count), publisher=$($entries.Publisher)"
+          }
+          Write-Host "Verified Programs and Features publisher: $($entries[0].Publisher)"
           $installed = Get-Item "$dest/njcb harness.exe"
           Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue
           $env:NJCB_INSTALLED_EXE = $installed.FullName
