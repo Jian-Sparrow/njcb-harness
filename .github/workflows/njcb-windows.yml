@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 180
     env:
       DSH_TELEMETRY_DISABLED: '1'
-      BUILD_VERSION: 0.2.2-alpha.3.20261104.1
+      BUILD_VERSION: 0.2.2-alpha.3.20261109.1
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v4
