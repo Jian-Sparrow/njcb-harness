@@ -50,3 +50,9 @@ native/system/test/bin/
 
 # Generated company-signed CUA release record.
 /packages/experimental/cua-macos/cua-helper.json
+
+# Local tool state and the operator-facing guide. The guide ships inside the
+# offline bundle and stays out of the repository on purpose: it describes one
+# deployment, not the project.
+.workbuddy/
+tooling/offline-plugins/INSTALL-GUIDE.zh-CN.md

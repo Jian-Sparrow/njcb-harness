@@ -12,7 +12,7 @@ permissions:
 jobs:
   bundle:
     runs-on: windows-2022
-    timeout-minutes: 70
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
         with:
@@ -20,8 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.19.0'
-      - name: Test read-only loopback registry
-        run: node --test tooling/offline-plugins/serve.test.mjs
+      - name: Test read-only loopback registry and the publish script
+        run: node --test tooling/offline-plugins/serve.test.mjs tooling/offline-plugins/add-plugin.test.mjs
       - name: Build original npm artifact snapshot
         run: node tooling/offline-plugins/build-bundle.mjs "${{ runner.temp }}/njcb-offline-plugins"
       - name: Include portable Windows Node and license
@@ -51,7 +51,7 @@ jobs:
         run: |
           $dest = '${{ runner.temp }}/delivery'
           New-Item -ItemType Directory -Force $dest | Out-Null
-          $zip = "$dest/njcb-plugins-13-win-x64-for-0.2.2-alpha.3.zip"
+          $zip = "$dest/njcb-plugins-22-win-x64-for-0.2.2-alpha.3.zip"
           & 7z a -tzip -mx=5 $zip '${{ runner.temp }}/njcb-offline-plugins/*'
           if ($LASTEXITCODE) { throw 'Archive failed' }
           "$((Get-FileHash $zip).Hash.ToLowerInvariant())  $(Split-Path $zip -Leaf)" | Set-Content "$dest/SHA256.txt" -Encoding ascii
