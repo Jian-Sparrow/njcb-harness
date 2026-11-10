@@ -2,7 +2,7 @@
 
 > 面向使用者的分步操作随包分发：ZIP 里的 `INSTALL-GUIDE.zh-CN.md`（装客户端、配模型、装插件、加新插件、排错）。该文件只存在于离线包，不入库，本文是运维/打包侧的技术说明。
 
-适用安装包：`njcb-harness-0.2.2-alpha.3.20261104.1-win-x64-unsigned.exe`，Harness 运行时 `0.2.2-alpha.3`。版本与完整依赖由 `selection.json`、`resolution/package-lock.json` 锁定。此包提供 22 个插件及 Windows x64 的 npm 依赖和本地安装源，不包含模型服务。
+适用安装包：`njcb-harness-0.2.2-alpha.3.20261104.1-win-x64-unsigned.exe`，Harness 运行时 `0.2.2-alpha.3`。版本与完整依赖由 `selection.json`、`resolution/package-lock.json` 锁定。此包提供 21 个插件及 Windows x64 的 npm 依赖和本地安装源，不包含模型服务。
 
 ## 内网安装
 
@@ -58,12 +58,11 @@ node\node.exe add-plugin.mjs --list          :: 看源里现在有什么
 
 ## 办公与开发场景的插件
 
-除通用插件外，本包按两个场景补了 9 个。选型依据是「离线可用优先，其次看实际使用量」：周下载量和 star 只是筛选入口，真正决定的是解析依赖时全部来自 `registry.npmjs.org`、不引入安装期下载、不依赖公网服务。
+除通用插件外，本包按两个场景补了 8 个。选型依据是「离线可用优先，其次看实际使用量」：周下载量和 star 只是筛选入口，真正决定的是解析依赖时全部来自 `registry.npmjs.org`、不引入安装期下载、不依赖公网服务。
 
 | 插件 | 版本 | 场景 | 离线前提 |
 |---|---|---|---|
 | `dsh-ppt` | 0.20.5 | 办公：给材料出可交付 PPTX | 纯 JS 生成；`@deepseek-ai/libreoffice-kit` 是可选 peer，不装也能出 pptx，只影响转 PDF/重算 |
-| `dsh-office-kit` | 0.4.8 | 办公：Word / Excel / PPT / PDF 读写与预览 | 无外部依赖 |
 | `dsh-excel-chat` | 0.43.0 | 办公：对话式清洗、改表、出报表 | 无外部依赖 |
 | `@michengai/dsh-code-review` | 1.0.10 | 开发：Codex 风格代码审查、子 Agent、中英文报告 | 调用内网模型；与已有 `@michengai` 三个插件同族，依赖不冲突 |
 | `@goodandready/dsh-context-lens` | 0.1.35 | 开发（含 Java）：AST 骨架化 + 构建/测试日志压缩 | 声明支持 Java 与 Maven/Gradle，无外部依赖 |
@@ -72,7 +71,16 @@ node\node.exe add-plugin.mjs --list          :: 看源里现在有什么
 | `dsh-mcp-connector` | 0.2.97 | AI 开发：接本地或内网 MCP 服务 | 客户端走本地 stdio/HTTP；插件自带的在线目录指向公网，内网打不开属预期，手工填服务配置即可 |
 | `dsh-refactor-insight` | 0.2.0 | 开发：把代码坏味道整理成可执行的重构清单 | 无外部依赖，纯 skill |
 
-这 9 个都以固定版本写进 `selection.json`，与原有 13 个一起解析、一起打包；升级需要改这里再重建，不在内网侧升级。
+这 8 个都以固定版本写进 `selection.json`，与原有 13 个一起解析、一起打包；升级需要改这里再重建，不在内网侧升级。
+
+### 为什么没有 `dsh-office-kit`
+
+它不适合这个部署，原因有两层，第二层更致命：
+
+1. **它的 `postinstall` 需要外网。** 脚本找一个 Python 3.10–3.13，找不到就从 `python.org` 下载安装包（校验签名后静默安装），再用 `pip` 从 PyPI 装 `python-docx`、`openpyxl`、`pypdf`、`reportlab`、`pymupdf` 等 10 个库。Win10 不自带 Python，内网又到不了这两个站点，脚本必然失败。
+2. **它的存在会让整批安装失败，不是它一个装不上。** pnpm 默认不信任依赖的构建脚本，遇到就报 `ERR_PNPM_IGNORED_BUILDS` 并以退出码 1 结束。用户看到的是「22 个插件一个都没装上」，而不是「Word 那个没装上」——这种失败信息在现场几乎无法定位。
+
+`build-bundle.mjs` 现在会在构建时检查整棵依赖树，只要有包声明 `preinstall`/`install`/`postinstall` 就直接中止并列出包名。这不是保守：内网里没有让这些脚本成功的条件，而放行它们等于把失败推迟到用户面前。要让这类插件可用，得先给它准备离线运行时（例如随包带 Python 和 wheelhouse），那是另一件事，不是改个配置能解决的。
 
 ## 功能所需的内网资源
 
