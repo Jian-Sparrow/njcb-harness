@@ -7,8 +7,11 @@ import zlib from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
+import { fileURLToPath } from 'node:url';
 
-const script = new URL('./add-plugin.mjs', import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: the latter yields `/D:/a/...` on Windows,
+// which node then resolves against the cwd drive as `D:\D:\a\...`.
+const script = fileURLToPath(new URL('./add-plugin.mjs', import.meta.url));
 
 /**
  * A ustar archive holding `entries`, gzipped.
@@ -548,7 +551,7 @@ test('--dry-run reports the entry without writing anything', async () => {
 
 test('the market sees a package published while the registry window is open', async () => {
   const root = await workspace();
-  await fs.copyFile(new URL('./serve.mjs', import.meta.url).pathname, path.join(root, 'serve.mjs'));
+  await fs.copyFile(fileURLToPath(new URL('./serve.mjs', import.meta.url)), path.join(root, 'serve.mjs'));
   const port = 40000 + Math.floor(Math.random() * 10000);
   const child = spawn(process.execPath, [path.join(root, 'serve.mjs')], {
     env: { ...process.env, NJCB_OFFLINE_PORT: String(port) },
