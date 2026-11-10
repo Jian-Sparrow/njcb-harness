@@ -76,8 +76,17 @@ await Promise.all(Array.from({ length: 8 }, async () => {
 await fs.writeFile(path.join(output, 'registry.json'), JSON.stringify(registry));
 await fs.writeFile(path.join(output, 'selection.json'), JSON.stringify(selection, null, 2));
 await fs.writeFile(path.join(output, 'SHA256SUMS.txt'), checksums.sort().join('\n') + '\n');
-for (const file of ['serve.mjs', 'Install-plugins.ps1', 'Start-offline-registry.cmd', 'Install-plugins.cmd', 'README.zh-CN.md']) {
-  await fs.copyFile(path.join(source, file), path.join(output, file));
+// add-plugin.mjs and its .cmd wrapper ship with the snapshot: the intranet
+// side has no way to fetch them, and it is the side that needs to publish.
+// INSTALL-GUIDE.zh-CN.md is deliberately untracked, so a build from a clean
+// checkout does not have it; the copy is skipped rather than failing the build.
+for (const file of ['serve.mjs', 'add-plugin.mjs', 'Add-plugin.cmd', 'Install-plugins.ps1', 'Start-offline-registry.cmd', 'Install-plugins.cmd', 'README.zh-CN.md', 'INSTALL-GUIDE.zh-CN.md']) {
+  const from = path.join(source, file);
+  if (!(await fs.stat(from).catch(() => null))) {
+    console.log(`skipped ${file} (not present in this checkout)`);
+    continue;
+  }
+  await fs.copyFile(from, path.join(output, file));
 }
 await fs.writeFile(path.join(output, 'plugins.txt'), Object.entries(selection.plugins).map(([n, v]) => `${n}@${v}`).join('\r\n') + '\r\n');
 console.log(`Built ${Object.keys(registry.packages).length} packages, ${checksums.length} tarballs in ${output}`);
