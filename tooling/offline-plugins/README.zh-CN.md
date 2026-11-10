@@ -2,18 +2,18 @@
 
 > 面向使用者的分步操作随包分发：ZIP 里的 `INSTALL-GUIDE.zh-CN.md`（装客户端、配模型、装插件、加新插件、排错）。该文件只存在于离线包，不入库，本文是运维/打包侧的技术说明。
 
-适用安装包：`njcb-harness-0.2.2-alpha.3.20261104.1-win-x64-unsigned.exe`，Harness 运行时 `0.2.2-alpha.3`。版本与完整依赖由 `selection.json`、`resolution/package-lock.json` 锁定。此包提供 21 个插件及 Windows x64 的 npm 依赖和本地安装源，不包含模型服务。
+适用安装包：`njcb-harness-0.2.2-alpha.3.20261104.1-win-x64-unsigned.exe`，Harness 运行时 `0.2.2-alpha.3`。版本由 `selection.json` 选定、由提交在仓库里的 `selection-lock.json` 锁定（构建不再自行解析依赖，见下文「为什么依赖版本要锁死」）。此包提供 22 个插件——21 个来自 npm 上游，加上自建的插件市场 `dshmarket`——以及 Windows x64 的 npm 依赖和本地安装源，不包含模型服务。
 
 ## 内网安装
 
 1. 完整解压 ZIP 到本地固定目录，例如 `C:\njcb-offline-plugins`，不要在 ZIP 内直接运行。
 2. 双击 `Start-offline-registry.cmd`。窗口出现 `http://127.0.0.1:4873/` 后保持打开。自带 Node，不需要安装 npm、Node 或 Python；源只允许本机访问，不连接外网。
 3. 两种装法，任选：
-   - **装了插件市场（dshmarket）**：打开市场即可看到本源的插件列表（名称、版本、说明）并直接安装。市场把源当目录读——源里有哪些插件就列哪些，依赖包不会混进来。后续往源里加插件见下文「往源里加插件」。
+   - **装了插件市场（dshmarket）**：打开市场即可看到本源的插件列表（名称、版本、说明）并直接安装。市场把源当目录读——源里有哪些插件就列哪些，依赖包不会混进来。后续往源里加插件见下文「往源里加插件」。**市场本身也在这 22 个里**，`Install-plugins.cmd` 会一并装上，不需要从公网下载。
    - **用 NJCB Harness 自带入口**：在「添加插件」选「自定义地址」，填入 `http://127.0.0.1:4873/`，逐个复制 `plugins.txt` 中的完整 `包名@版本` 并安装。
 
    重启应用后检查插件状态。
-4. 如需一次安装全部：先启动过 NJCB Harness 以初始化 desktop profile，然后从托盘彻底退出；双击 `Install-plugins.cmd`。自定义安装目录时，在终端运行 `Install-plugins.cmd -InstallDir "D:\Apps\njcb harness"`。它调用安装包自带的 CLI，不替换现有配置，也不绕过版本检查。执行前建议备份 `%USERPROFILE%\.dsh\profiles\desktop`。
+4. 如需一次安装全部：先启动过 NJCB Harness 以初始化 desktop profile，然后从托盘彻底退出；双击 `Install-plugins.cmd`。自定义安装目录时，在终端运行 `Install-plugins.cmd -InstallDir "D:\Apps\njcb harness"`。它调用安装包自带的 CLI，不替换现有配置，也不绕过版本检查。执行前建议备份 `%USERPROFILE%\.dsh\profiles\desktop`。如果它报「njcb harness is still running」，提示里会列出实际占用进程的 PID、进程名和路径；确认可以结束它们时加 `-Force`（脚本会自行结束并等它们退出）。
 5. 安装完成可关闭临时源窗口。插件自身运行不依赖这个源；后续安装/升级时才需再次打开。
 
 源仅收录本次清单与依赖，不是全量 npm 镜像。已有额外插件、额外 scope 源配置或代理配置可能导致安装请求超出清单；如出现 `NOT IN SNAPSHOT`，保留包名和错误日志，不要随意更改版本。不要点「全部更新」尝试更新到公网最新版。
@@ -56,6 +56,36 @@ node\node.exe add-plugin.mjs --list          :: 看源里现在有什么
 
 打包侧不必手工维护清单：以后重建整包时，`build-bundle.mjs` 会用上游版本覆盖同名条目，两边的 tarball 命名规则是同一套（`sha256("包名@版本").tgz`），不会因为手工加过就多出一份。
 
+## 为什么依赖版本要锁死
+
+`build-bundle.mjs` 不再自行解析依赖：解析结果提交为 `selection-lock.json`，构建只按它取包。
+
+原因是一次现场故障。以前每次构建都跑一遍 `npm install --package-lock-only`，传递依赖取的是「当天最新」。2026-11-08 `ws` 从 8.22.1 升到 8.22.2，于是 06 号构建的源里是 8.22.1、10 号的是 8.22.2。客户端 profile 里存着自己的 `pnpm-lock.yaml`，它记着老版本；`pnpm add` 拿着这个版本去源里要，源说没有，**整批 21 个插件一起失败**，报错是 `No matching version found for ws@8.22.1`——一个谁都没选过的传递依赖。
+
+规则：
+
+- 改 `selection.json` 后必须 `node build-bundle.mjs --update-lock`，看一眼 diff，和 `selection.json` 一起提交。
+- CI 第一步跑 `--check`，锁与选择不一致直接失败，不给「悄悄换一版」的机会。这一步不联网、不下载。
+- 升级传递依赖等于抬高所有使用者的基线：已有的 profile 会和新源不兼容，见「故障定位」里清除旧 profile 的做法。
+
+### 自建插件（vendor）
+
+`dshmarket` 不走 npm 上游：公网上的 `dshmarket@1.73.17` 是加内网能力之前的构建，`lib/` 里没有 `offline.js` 和 `catalog-registry.js`，装上去市场在内网只会转圈。所以它从 `dsh-market` 仓库自己打包，放进本目录的 `vendor/`：
+
+```bash
+cd <dsh-market 仓库> && npm run build && npm pack --pack-destination <本目录>/vendor
+```
+
+在 `selection.json` 里登记：
+
+```json
+"vendor": { "dshmarket": "vendor/dshmarket-1.73.18-intra.1.tgz" }
+```
+
+构建时它按 `file:` 依赖解析（它的传递依赖照常从 npm 取、照常进锁），打进 `tarballs/`；包名、版本和 `dsh` 字段从 tgz 里的 `package.json` 读出来，所以它会出现在市场列表、`plugins.txt`，并被 `Install-plugins.cmd` 一起安装。`--check` 会核对 tgz 里的包名与登记名一致。
+
+换版本：重新 `npm pack`、改 `selection.json` 里的文件名、`--update-lock`、一起提交。
+
 ## 办公与开发场景的插件
 
 除通用插件外，本包按两个场景补了 8 个。选型依据是「离线可用优先，其次看实际使用量」：周下载量和 star 只是筛选入口，真正决定的是解析依赖时全部来自 `registry.npmjs.org`、不引入安装期下载、不依赖公网服务。
@@ -94,6 +124,10 @@ node\node.exe add-plugin.mjs --list          :: 看源里现在有什么
 - 若组织要求禁用 Univer 匿名遥测，在启动 NJCB Harness 的环境中设置 `DO_NOT_TRACK=1`，或在插件中设置 `telemetry: false`。
 
 ## 故障定位
+
+**`No matching version found for <包>@<版本>`**：客户端 profile 里留着上一份源（或更早一次联网安装）的 `pnpm-lock.yaml`，它钉的传递依赖版本不在当前源里。这是整批安装失败，不是某个插件坏了。处置：退出应用，把 `%USERPROFILE%\.dsh\profiles\desktop` 下的 `pnpm-lock.yaml` 和 `node_modules` 改名备份（保留 `package.json`、`pnpm-workspace.yaml`、`cordis.patch.yml`），重跑 `Install-plugins.cmd`。**不要**往源里手工补那个包来绕过——下一个传递依赖还会撞。
+
+**`未找到相关插件`**：源通了，但源里没有这个包名。核对 `node add-plugin.mjs --list`；如果缺的是 `dshmarket`，说明这份 ZIP 是 22 个之前的旧包。
 
 如果再次出现 `configured to use 11.7.0 of pnpm / current 11.28.5`，这是目标 profile 或上层目录中的包管理器版本声明冲突，不是缺少 npm 源。关闭应用后先尝试本包的批量安装脚本（它清除子进程继承的 Corepack 上下文）；如仍报错，保留 `%USERPROFILE%\.dsh\profiles\desktop\package.json`、`pnpm-workspace.yaml` 与 `.plugin-manager\logs`，定位声明后再修改。不要重装系统 pnpm 或删除整个 profile。
 

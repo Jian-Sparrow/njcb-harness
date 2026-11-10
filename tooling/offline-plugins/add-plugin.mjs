@@ -18,6 +18,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { topLevelManifest } from './tgz-manifest.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // npm's own rules, relaxed to case-insensitive: the URL a client asks for is
@@ -56,59 +57,6 @@ function size(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-/** A NUL-terminated string field out of a tar header. */
-function field(header, start, length) {
-  const slice = header.subarray(start, start + length);
-  const end = slice.indexOf(0);
-  return (end === -1 ? slice : slice.subarray(0, end)).toString('utf8');
-}
-
-/** A numeric tar header field. Everything npm produces writes octal. */
-function octal(header, start, length) {
-  const text = field(header, start, length).trim();
-  if (text === '') return 0;
-  const value = Number.parseInt(text, 8);
-  if (!Number.isFinite(value)) throw new Error('unsupported tar header (base-256 size encoding)');
-  return value;
-}
-
-/**
- * The bytes of package/package.json at the top of an uncompressed tar, or
- * null when the archive does not have one there.
- *
- * Only the first level is inspected: a package tarball always starts with its
- * own manifest, and walking a plugin's bundled node_modules to find a nested
- * one would happily publish a dependency's manifest under the plugin's name.
- */
-function topLevelManifest(tar) {
-  let offset = 0;
-  while (offset + 512 <= tar.length) {
-    const header = tar.subarray(offset, offset + 512);
-    // Two zero blocks end the archive. One is padding, and a header that is
-    // entirely zero is not an entry either way.
-    if (header.every(byte => byte === 0)) return null;
-    const prefix = field(header, 345, 155);
-    const name = field(header, 0, 100).replace(/^\.\//u, '');
-    const full = (prefix === '' ? name : `${prefix}/${name}`).replace(/^\.\//u, '');
-    const type = header[156] === 0 ? '0' : String.fromCharCode(header[156]);
-    const start = offset + 512;
-    const bytes = octal(header, 124, 12);
-    // '0' and NUL are both regular files; a directory named package.json is
-    // not one, and reading its zero-byte body would fail as truncated JSON.
-    //
-    // Only `package/package.json` counts. npm and pnpm strip one path
-    // component when they unpack a tarball, so an archive whose files sit at
-    // the root installs nothing at all — accepting it here would record a
-    // package that can never be installed, which is worse than refusing it
-    // while the person who built it is still standing there.
-    if ((type === '0' || type === '\0') && full === 'package/package.json') {
-      return tar.subarray(start, start + bytes);
-    }
-    offset = start + Math.ceil(bytes / 512) * 512;
-  }
-  return null;
 }
 
 /** Parse a package manifest, naming the archive when it is malformed. */

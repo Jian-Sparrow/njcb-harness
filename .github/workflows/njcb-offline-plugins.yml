@@ -20,8 +20,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.19.0'
+      - name: Verify the committed resolution lock still describes the selection
+        run: node tooling/offline-plugins/build-bundle.mjs --check
       - name: Test read-only loopback registry and the publish script
-        run: node --test tooling/offline-plugins/serve.test.mjs tooling/offline-plugins/add-plugin.test.mjs
+        run: node --test tooling/offline-plugins/serve.test.mjs tooling/offline-plugins/add-plugin.test.mjs tooling/offline-plugins/selection-lock.test.mjs
       - name: Build original npm artifact snapshot
         run: node tooling/offline-plugins/build-bundle.mjs "${{ runner.temp }}/njcb-offline-plugins"
       - name: Include portable Windows Node and license
@@ -51,7 +53,7 @@ jobs:
         run: |
           $dest = '${{ runner.temp }}/delivery'
           New-Item -ItemType Directory -Force $dest | Out-Null
-          $count = (Get-Content 'tooling/offline-plugins/selection.json' -Raw | ConvertFrom-Json).plugins.PSObject.Properties.Count
+          $count = (Get-Content '${{ runner.temp }}/njcb-offline-plugins/plugins.txt' | Where-Object { $_.Trim() }).Count
           $zip = "$dest/njcb-plugins-$count-win-x64-for-0.2.2-alpha.3.zip"
           & 7z a -tzip -mx=5 $zip '${{ runner.temp }}/njcb-offline-plugins/*'
           if ($LASTEXITCODE) { throw 'Archive failed' }

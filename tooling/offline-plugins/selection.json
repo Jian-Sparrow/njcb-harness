@@ -24,5 +24,8 @@
     "dsh-mcp-connector": "0.2.97",
     "@goodandready/dsh-context-lens": "0.1.35",
     "dsh-refactor-insight": "0.2.0"
+  },
+  "vendor": {
+    "dshmarket": "vendor/dshmarket-1.73.18-intra.1.tgz"
   }
 }
