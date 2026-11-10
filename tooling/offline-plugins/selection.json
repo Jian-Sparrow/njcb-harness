@@ -15,6 +15,15 @@
     "dsh-ops": "0.4.1",
     "@openviking/dsh-memory-plugin": "0.5.32",
     "billion-context": "0.1.212",
-    "dsh-univer-office": "0.4.0"
+    "dsh-univer-office": "0.4.0",
+    "dsh-ppt": "0.20.5",
+    "dsh-office-kit": "0.4.8",
+    "dsh-excel-chat": "0.43.0",
+    "@michengai/dsh-code-review": "1.0.10",
+    "dsh-diff-approval": "0.37.4",
+    "dsh-auto-review": "0.15.0",
+    "dsh-mcp-connector": "0.2.97",
+    "@goodandready/dsh-context-lens": "0.1.35",
+    "dsh-refactor-insight": "0.2.0"
   }
 }
