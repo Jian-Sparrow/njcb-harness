@@ -51,7 +51,8 @@ jobs:
         run: |
           $dest = '${{ runner.temp }}/delivery'
           New-Item -ItemType Directory -Force $dest | Out-Null
-          $zip = "$dest/njcb-plugins-22-win-x64-for-0.2.2-alpha.3.zip"
+          $count = (Get-Content 'tooling/offline-plugins/selection.json' -Raw | ConvertFrom-Json).plugins.PSObject.Properties.Count
+          $zip = "$dest/njcb-plugins-$count-win-x64-for-0.2.2-alpha.3.zip"
           & 7z a -tzip -mx=5 $zip '${{ runner.temp }}/njcb-offline-plugins/*'
           if ($LASTEXITCODE) { throw 'Archive failed' }
           "$((Get-FileHash $zip).Hash.ToLowerInvariant())  $(Split-Path $zip -Leaf)" | Set-Content "$dest/SHA256.txt" -Encoding ascii

@@ -44,6 +44,7 @@ function packument(name) {
 const checksums = [];
 const compatible = (values, target) => !values || (!values.includes(`!${target}`) && (!values.some(x => !x.startsWith('!')) || values.includes(target) || values.includes('any')));
 const queue = [...requests.values()];
+const downloaded = new Set();
 let complete = 0;
 await Promise.all(Array.from({ length: 8 }, async () => {
   while (queue.length) {
@@ -63,6 +64,7 @@ await Promise.all(Array.from({ length: 8 }, async () => {
       const sha256 = createHash('sha256').update(data).digest('hex');
       registry.artifacts[filename] = { name, version, sha256, bytes: data.length, source: manifest.dist.tarball };
       checksums.push(`${sha256}  tarballs/${filename}`);
+      downloaded.add(`${name}@${version}`);
     }
     manifest.dist = { ...manifest.dist, tarball: `/tarballs/${filename}` };
     // No upstream redirects are retained, including for platform-excluded optional artifacts.
@@ -73,6 +75,26 @@ await Promise.all(Array.from({ length: 8 }, async () => {
     console.log(`${++complete}/${requests.size} ${name}@${version}${allowed ? '' : ' (metadata only: other OS/CPU)'}`);
   }
 }));
+// pnpm refuses the whole `add` when any dependency declares an install-time
+// script it has not been told to trust (ERR_PNPM_IGNORED_BUILDS) — the intranet
+// user ends up with nothing installed, not one plugin short, and the window is
+// a console they cannot debug. Refuse here, where the build machine still has
+// both a network and a shell.
+const installScripts = [];
+for (const [name, pack] of Object.entries(registry.packages)) {
+  for (const [version, manifest] of Object.entries(pack.versions)) {
+    if (!downloaded.has(`${name}@${version}`)) continue;
+    const kinds = ['preinstall', 'install', 'postinstall'].filter(kind => manifest.scripts?.[kind]);
+    if (kinds.length) installScripts.push(`${name}@${version} (${kinds.map(kind => `${kind}: ${manifest.scripts[kind]}`).join('; ')})`);
+  }
+}
+if (installScripts.length) {
+  throw new Error([
+    'Refusing to build: these packages declare install-time scripts, and pnpm fails the entire offline install when it meets one it has not approved (ERR_PNPM_IGNORED_BUILDS):',
+    ...installScripts.map(line => `  ${line}`),
+    'Drop them from selection.json. Approving the build is not a fix on an intranet: the script usually reaches for a network the users do not have.',
+  ].join('\n'));
+}
 await fs.writeFile(path.join(output, 'registry.json'), JSON.stringify(registry));
 await fs.writeFile(path.join(output, 'selection.json'), JSON.stringify(selection, null, 2));
 await fs.writeFile(path.join(output, 'SHA256SUMS.txt'), checksums.sort().join('\n') + '\n');
