@@ -1,6 +1,7 @@
 ﻿param(
   [string]$ProfileName = 'desktop',
   [string]$ProcessName = 'njcb harness',
+  [switch]$FreshPlugins,
   [switch]$DryRun
 )
 $ErrorActionPreference = 'Stop'
@@ -94,6 +95,72 @@ function Move-Aside([string]$path) {
     [Environment]::NewLine + "仍然不行就用管理员身份运行一次。")
 }
 
+# 把插件清单也清空，回到「只有客户端自带层」的状态。
+#
+# 只清 pnpm-lock.yaml 和 node_modules 不够：客户端的「添加插件」和市场的安装
+# 都是在 profile 里跑 `pnpm add`，而 pnpm 会把 package.json 里已有的依赖一并装
+# 回来。那些依赖是 `--save-exact` 存的，如果新离线包换了插件版本，旧版本号在
+# 新源里不存在，装市场时会直接报 No matching version —— 清锁文件救不了这一层。
+#
+# 只删「插件」，不删整个 package.json：这个文件里还可能有安装自带的包覆盖
+# （@deepseek-ai/dsh 一类），删掉会让客户端起不来。判定标准是「既是
+# dependencies 里的项，又出现在 dsh.profile.bundles 里，或它自己的 manifest
+# 声明了 dsh.bundle」—— 安装自带的层不在 dependencies 里，因此不会被误删。
+function Reset-PluginList {
+  $manifestPath = [System.IO.Path]::Combine($profileDir, 'package.json')
+  if (!(Test-Path -LiteralPath $manifestPath)) {
+    Write-Host '  没有 package.json（profile 还没初始化），跳过。'
+    return
+  }
+  $raw = [System.IO.File]::ReadAllText($manifestPath)
+  $manifest = $null
+  try { $manifest = $raw | ConvertFrom-Json } catch {
+    throw ("$manifestPath 不是合法 JSON，没有改动它：" + $_.Exception.Message)
+  }
+  if (!$manifest.dependencies) {
+    Write-Host '  package.json 里没有依赖，插件清单已经是空的。'
+    return
+  }
+  $bundles = @()
+  if ($manifest.dsh -and $manifest.dsh.profile -and $manifest.dsh.profile.bundles) {
+    $bundles = @($manifest.dsh.profile.bundles)
+  }
+  $plugins = New-Object System.Collections.ArrayList
+  foreach ($name in @($manifest.dependencies.PSObject.Properties.Name)) {
+    $isBundle = $bundles -contains $name
+    $declares = $false
+    $installed = [System.IO.Path]::Combine($profileDir, 'node_modules', $name, 'package.json')
+    if (Test-Path -LiteralPath $installed) {
+      try { $declares = $null -ne ($installed | Get-Content -Raw | ConvertFrom-Json).dsh.bundle } catch { }
+    }
+    if ($isBundle -or $declares) { [void]$plugins.Add($name) }
+  }
+  if ($plugins.Count -eq 0) {
+    Write-Host '  dependencies 里没有插件（只剩安装自带的包），无需清空。'
+    return
+  }
+  Write-Host ("  将移除 {0} 个插件：" -f $plugins.Count)
+  foreach ($name in $plugins) { Write-Host ("    {0}" -f $name) }
+  if ($DryRun) { return }
+
+  $backup = "$manifestPath.bak-$stamp"
+  $n = 2
+  while (Test-Path -LiteralPath $backup) {
+    $backup = "$manifestPath.bak-$stamp-$n"
+    $n++
+  }
+  Copy-Item -LiteralPath $manifestPath -Destination $backup
+  foreach ($name in $plugins) { $manifest.dependencies.PSObject.Properties.Remove($name) }
+  if ($bundles.Count -gt 0) {
+    $kept = @($bundles | Where-Object { $plugins -notcontains $_ })
+    $manifest.dsh.profile.bundles = $kept
+  }
+  $json = $manifest | ConvertTo-Json -Depth 100
+  [System.IO.File]::WriteAllText($manifestPath, $json + "`n", (New-Object System.Text.UTF8Encoding($false)))
+  Write-Host ("  已清空插件清单（原文件备份为 {0}）" -f [System.IO.Path]::GetFileName($backup))
+  $script:freshBackup = $backup
+}
+
 $homeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
 if (!$homeDir) { throw '读不到用户主目录（USERPROFILE / HOME 都是空的）。' }
 $profileDir = [System.IO.Path]::Combine($homeDir, '.dsh', 'profiles', $ProfileName)
@@ -115,15 +182,19 @@ if (!(Test-Path -LiteralPath $profileDir)) {
 }
 
 $existing = @($targets | Where-Object { Test-Path -LiteralPath $_ })
-if ($existing.Count -eq 0) {
+$manifestPath = [System.IO.Path]::Combine($profileDir, 'package.json')
+if ($existing.Count -eq 0 -and !($FreshPlugins -and (Test-Path -LiteralPath $manifestPath))) {
   Write-Host ''
   Write-Host '没有需要清理的内容：pnpm-lock.yaml 和 node_modules 都不存在。' -ForegroundColor Green
   Write-Host '如果安装仍报「没有匹配的版本」，问题不在本机的解析记录，请看 README 的故障一节。'
   exit 0
 }
 
+$total = if ($FreshPlugins) { 4 } else { 3 }
+$freshBackup = $null
+
 # 1) 先关进程，否则 Windows 会锁住 node_modules 里的原生模块。
-Write-Step '[1/3] 关闭 njcb harness'
+Write-Step ("[1/{0}] 关闭 njcb harness" -f $total)
 $running = Get-AppProcess
 if ($running.Count -eq 0) {
   Write-Host '  没有在运行的进程。'
@@ -158,8 +229,16 @@ if ($running.Count -eq 0) {
   }
 }
 
-# 2) 改名。锁文件在前：它是「记住的版本」，也是体积小的那个。
-Write-Step '[2/3] 清理旧解析记录'
+if ($FreshPlugins) {
+  # 2) 插件清单必须在 node_modules 还在的时候处理：判定「是不是插件」要看
+  #    每个包自己的 manifest 有没有 dsh.bundle。
+  Write-Step ("[2/{0}] 清空插件清单" -f $total)
+  Reset-PluginList
+}
+
+# 3) 改名。锁文件在前：它是「记住的版本」，也是体积小的那个。
+$renameStep = if ($FreshPlugins) { 3 } else { 2 }
+Write-Step ("[{0}/{1}] 清理旧解析记录" -f $renameStep, $total)
 $renamed = @()
 foreach ($path in $existing) {
   $name = [System.IO.Path]::GetFileName($path)
@@ -171,20 +250,22 @@ foreach ($path in $existing) {
   }
 }
 
-# 3) 汇总，并把下一步写清楚：这次清理本身不会重装任何东西。
-Write-Step '[3/3] 完成'
+# 4) 汇总，并把下一步写清楚：这次清理本身不会重装任何东西。
+Write-Step ("[{0}/{0}] 完成" -f $total)
 if ($DryRun) {
   Write-Host '预览结束，没有改动任何文件。去掉 -DryRun 才会真的执行。' -ForegroundColor Yellow
   exit 0
 }
 
 $allBackups = @(Get-ChildItem -LiteralPath $profileDir -Force -ErrorAction SilentlyContinue |
-  Where-Object { $_.Name -like 'pnpm-lock.yaml.bak*' -or $_.Name -like 'node_modules.bak*' })
+  Where-Object {
+    $_.Name -like 'pnpm-lock.yaml.bak*' -or $_.Name -like 'node_modules.bak*' -or $_.Name -like 'package.json.bak*'
+  })
 $totalBytes = [int64]0
 Write-Host ''
 Write-Host '磁盘上的备份（确认重装正常后可以删）：'
 foreach ($b in $allBackups) {
-  $isNew = @($renamed | Where-Object { $_.Backup -eq $b.FullName }).Count -gt 0
+  $isNew = (@($renamed | Where-Object { $_.Backup -eq $b.FullName }).Count -gt 0) -or ($b.FullName -eq $freshBackup)
   $size = Get-FolderSize $b.FullName
   $totalBytes += $size
   $tag = if ($isNew) { '' } else { '  （更早一次清理留下的）' }
@@ -194,8 +275,14 @@ Write-Host ("  合计 {0}" -f (Format-Size $totalBytes))
 
 Write-Host ''
 Write-Host '下一步：' -ForegroundColor Green
-Write-Host '  1) 双击 Install-plugins.cmd 重新安装，这次会重新解析版本，不再套用旧的。'
-Write-Host '  2) 启动客户端 → 插件 → 已安装，确认 22 项都在并处于启用状态。'
+if ($FreshPlugins) {
+  Write-Host '  1) 启动客户端 → 插件 → 添加插件 → 自定义地址填 http://127.0.0.1:4873/ → 安装 dshmarket。'
+  Write-Host '  2) 重启客户端，打开「插件市场」；标题栏出现「内网离线」即正常（市场包自带内网模式）。'
+  Write-Host '  3) 在市场里按需安装其余插件，不用一次装齐。'
+} else {
+  Write-Host '  1) 双击 Install-plugins.cmd 重新安装，这次会重新解析版本，不再套用旧的。'
+  Write-Host '  2) 启动客户端 → 插件 → 已安装，确认 22 项都在并处于启用状态。'
+}
 Write-Host ''
 Write-Host '想马上回收磁盘空间，在 cmd 里执行（路径按上面列出的逐个来）：'
 foreach ($b in $allBackups) {

@@ -8,16 +8,13 @@
 
 1. 完整解压 ZIP 到本地固定目录，例如 `C:\njcb-offline-plugins`，不要在 ZIP 内直接运行。
 2. 双击 `Start-offline-registry.cmd`。窗口出现 `http://127.0.0.1:4873/` 后保持打开。自带 Node，不需要安装 npm、Node 或 Python；源只允许本机访问，不连接外网。
-3. 两种装法，任选：
-   - **装了插件市场（dshmarket）**：打开市场即可看到本源的插件列表（名称、版本、说明）并直接安装。市场把源当目录读——源里有哪些插件就列哪些，依赖包不会混进来。后续往源里加插件见下文「往源里加插件」。**市场本身也在这 22 个里**，`Install-plugins.cmd` 会一并装上，不需要从公网下载。
-   - **用 NJCB Harness 自带入口**：在「添加插件」选「自定义地址」，填入 `http://127.0.0.1:4873/`，逐个复制 `plugins.txt` 中的完整 `包名@版本` 并安装。
+3. **先只装插件市场**（推荐）：启动 NJCB Harness → 「插件」→「添加插件」→ 选「自定义地址」→ 填 `http://127.0.0.1:4873/` → 名称填 `dshmarket`、版本选快照里的那个 → 安装 → 按提示重启。侧边栏打开市场，标题栏出现「内网离线」就对了。内网模式（`offline: true`）写在市场包自己的 `cordis.patch.yml` 里（`insert` 行的 `config`），所以从界面装也是内网模式，不需要任何人改配置文件；未指定 `npmRegistry` 时默认就是 `http://127.0.0.1:4873`。要换地址/端口才在 profile 的补丁层里写 `npmRegistry`（`config` 整块替换，`offline: true` 要一起写）。
+4. **其余插件按需装**：市场把源当目录读——源里有哪些插件就列哪些，依赖包不会混进来；点安装即可，装完按提示重启。源窗口要一直开着，市场不存包。要往源里加插件见下文「往源里加插件」。
+5. **一次装齐 22 个（可选）**：先启动过 NJCB Harness 以初始化 desktop profile，然后从托盘彻底退出；双击 `Install-plugins.cmd`。自定义安装目录时，在终端运行 `Install-plugins.cmd -InstallDir "D:\Apps\njcb harness"`。它调用安装包自带的 CLI，不替换现有配置，也不绕过版本检查。执行前建议备份 `%USERPROFILE%\.dsh\profiles\desktop`。如果它报「njcb harness is still running」，提示里会列出实际占用进程的 PID、进程名和路径；确认可以结束它们时加 `-Force`（脚本会自行结束并等它们退出）。
+6. `Install-plugins.cmd` 装完后还会往 profile 的 `cordis.patch.yml` 里写一段 `- id: dsh-market` / `offline: true`。这与包里自带的那段并存，值相同、无冲突（先应用包，再应用 profile 层，后者胜）。写之前它检查三件事：profile 目录存在；文件里没有已启用的 `dsh-market` 行；没有别人配的 `npmRegistry`（那种情况只提示不覆盖）。新建 profile 的补丁层是一个 `[]` 空数组，直接往后追加会让整个文件解析失败、客户端起不来，所以它是**替换**那个 `[]` 而不是追加。文件按字节写入（不做转码），Notepad 存成 ANSI/GBK 的注释不会被打乱。不需要内网模式时加 `-SkipMarketConfig`。
+7. 安装完成可关闭临时源窗口。插件自身运行不依赖这个源；后续安装/升级时才需再次打开。
 
-   重启应用后检查插件状态。
-4. 如需一次安装全部：先启动过 NJCB Harness 以初始化 desktop profile，然后从托盘彻底退出；双击 `Install-plugins.cmd`。自定义安装目录时，在终端运行 `Install-plugins.cmd -InstallDir "D:\Apps\njcb harness"`。它调用安装包自带的 CLI，不替换现有配置，也不绕过版本检查。执行前建议备份 `%USERPROFILE%\.dsh\profiles\desktop`。如果它报「njcb harness is still running」，提示里会列出实际占用进程的 PID、进程名和路径；确认可以结束它们时加 `-Force`（脚本会自行结束并等它们退出）。
-5. 装完后脚本会往 profile 的 `cordis.patch.yml` 里写 `- id: dsh-market` / `offline: true`，把插件市场切到内网模式（只列本源，不再连公网目录站），省掉使用者手改 YAML 这一步。写之前它检查三件事：profile 目录存在；文件里没有已启用的 `dsh-market` 行；没有别人配的 `npmRegistry`（那种情况只提示不覆盖）。新建 profile 的补丁层是一个 `[]` 空数组，直接往后追加会让整个文件解析失败、客户端起不来，所以它是**替换**那个 `[]` 而不是追加。文件按字节写入（不做转码），Notepad 存成 ANSI/GBK 的注释不会被打乱。不需要内网模式时加 `-SkipMarketConfig`。
-6. 安装完成可关闭临时源窗口。插件自身运行不依赖这个源；后续安装/升级时才需再次打开。
-
-装失败报 `No matching version found` 时不要重装客户端，也不要改版本号：双击 `Clean-profile.cmd` 清掉旧的解析记录，再重跑 `Install-plugins.cmd` 即可（原理与逐条动作见「故障定位」）。
+装失败报 `No matching version found` 时不要重装客户端，也不要改版本号：双击 `Clean-profile.cmd -FreshPlugins` 清掉旧的解析记录与旧插件清单，再按第 3 步装市场（原理与逐条动作见「故障定位」）。
 
 源仅收录本次清单与依赖，不是全量 npm 镜像。已有额外插件、额外 scope 源配置或代理配置可能导致安装请求超出清单；如出现 `NOT IN SNAPSHOT`，保留包名和错误日志，不要随意更改版本。不要点「全部更新」尝试更新到公网最新版。
 
@@ -82,7 +79,7 @@ cd <dsh-market 仓库> && npm run build && npm pack --pack-destination <本目�
 在 `selection.json` 里登记：
 
 ```json
-"vendor": { "dshmarket": "vendor/dshmarket-1.73.18-intra.1.tgz" }
+"vendor": { "dshmarket": "vendor/dshmarket-1.73.18-intra.2.tgz" }
 ```
 
 构建时它按 `file:` 依赖解析（它的传递依赖照常从 npm 取、照常进锁），打进 `tarballs/`；包名、版本和 `dsh` 字段从 tgz 里的 `package.json` 读出来，所以它会出现在市场列表、`plugins.txt`，并被 `Install-plugins.cmd` 一起安装。`--check` 会核对 tgz 里的包名与登记名一致。
