@@ -14,7 +14,8 @@
 
    重启应用后检查插件状态。
 4. 如需一次安装全部：先启动过 NJCB Harness 以初始化 desktop profile，然后从托盘彻底退出；双击 `Install-plugins.cmd`。自定义安装目录时，在终端运行 `Install-plugins.cmd -InstallDir "D:\Apps\njcb harness"`。它调用安装包自带的 CLI，不替换现有配置，也不绕过版本检查。执行前建议备份 `%USERPROFILE%\.dsh\profiles\desktop`。如果它报「njcb harness is still running」，提示里会列出实际占用进程的 PID、进程名和路径；确认可以结束它们时加 `-Force`（脚本会自行结束并等它们退出）。
-5. 安装完成可关闭临时源窗口。插件自身运行不依赖这个源；后续安装/升级时才需再次打开。
+5. 装完后脚本会往 profile 的 `cordis.patch.yml` 里写 `- id: dsh-market` / `offline: true`，把插件市场切到内网模式（只列本源，不再连公网目录站），省掉使用者手改 YAML 这一步。写之前它检查三件事：profile 目录存在；文件里没有已启用的 `dsh-market` 行；没有别人配的 `npmRegistry`（那种情况只提示不覆盖）。新建 profile 的补丁层是一个 `[]` 空数组，直接往后追加会让整个文件解析失败、客户端起不来，所以它是**替换**那个 `[]` 而不是追加。文件按字节写入（不做转码），Notepad 存成 ANSI/GBK 的注释不会被打乱。不需要内网模式时加 `-SkipMarketConfig`。
+6. 安装完成可关闭临时源窗口。插件自身运行不依赖这个源；后续安装/升级时才需再次打开。
 
 源仅收录本次清单与依赖，不是全量 npm 镜像。已有额外插件、额外 scope 源配置或代理配置可能导致安装请求超出清单；如出现 `NOT IN SNAPSHOT`，保留包名和错误日志，不要随意更改版本。不要点「全部更新」尝试更新到公网最新版。
 
@@ -128,6 +129,8 @@ cd <dsh-market 仓库> && npm run build && npm pack --pack-destination <本目�
 **`No matching version found for <包>@<版本>`**：客户端 profile 里留着上一份源（或更早一次联网安装）的 `pnpm-lock.yaml`，它钉的传递依赖版本不在当前源里。这是整批安装失败，不是某个插件坏了。处置：退出应用，把 `%USERPROFILE%\.dsh\profiles\desktop` 下的 `pnpm-lock.yaml` 和 `node_modules` 改名备份（保留 `package.json`、`pnpm-workspace.yaml`、`cordis.patch.yml`），重跑 `Install-plugins.cmd`。**不要**往源里手工补那个包来绕过——下一个传递依赖还会撞。
 
 **`未找到相关插件`**：源通了，但源里没有这个包名。核对 `node add-plugin.mjs --list`；如果缺的是 `dshmarket`，说明这份 ZIP 是 22 个之前的旧包。
+
+**市场报 `fetch failed … earlier: url:https://…`**：`dsh-market` 的配置里留了 `catalog:`，而那个地址连不上（常见是拼错、或根本没有主机名，如 `https://awesome-dsh-plugins.json`）。内网模式下不需要 `catalog:`——市场直接把源当目录读。删掉那一行；或重跑 `Install-plugins.cmd`，它在文件里没有 `npmRegistry` 时会用 `offline: true` 覆盖那段 `config`（`config` 是整块替换，旧的 `catalog` 随之消失）。`url:` 前缀是市场给「URL 型目录源」打的标签，看到它基本可以确定是配置问题，不是网络问题。
 
 如果再次出现 `configured to use 11.7.0 of pnpm / current 11.28.5`，这是目标 profile 或上层目录中的包管理器版本声明冲突，不是缺少 npm 源。关闭应用后先尝试本包的批量安装脚本（它清除子进程继承的 Corepack 上下文）；如仍报错，保留 `%USERPROFILE%\.dsh\profiles\desktop\package.json`、`pnpm-workspace.yaml` 与 `.plugin-manager\logs`，定位声明后再修改。不要重装系统 pnpm 或删除整个 profile。
 
