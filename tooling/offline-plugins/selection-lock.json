@@ -29,7 +29,7 @@
         "dsh-ppt": "0.20.5",
         "dsh-refactor-insight": "0.2.0",
         "dsh-univer-office": "0.4.0",
-        "dshmarket": "file:vendor/dshmarket-1.73.18-intra.2.tgz"
+        "dshmarket": "file:vendor/dshmarket-1.73.18-intra.3.tgz"
       }
     },
     "node_modules/@antfu/install-pkg": {
@@ -3867,9 +3867,9 @@
       }
     },
     "node_modules/dshmarket": {
-      "version": "1.73.18-intra.2",
-      "resolved": "file:vendor/dshmarket-1.73.18-intra.2.tgz",
-      "integrity": "sha512-QOx9CqhVQyqjuTSMkOg1f9CwTgb9BnsJJCN1ujNdiKrxP4/t5ZBpc3dZ1HYIqEgfCOXu9a6hyD7s8kc8AcwqBg==",
+      "version": "1.73.18-intra.3",
+      "resolved": "file:vendor/dshmarket-1.73.18-intra.3.tgz",
+      "integrity": "sha512-4Qo6sEdlPAnUzEwf9K01D1LCkYvMOndoj4bjEvVpSQhVT/7TQT8SrmKOari5auVjPgDBN+XRn7YNjZvrMj86xg==",
       "license": "MIT",
       "dependencies": {
         "js-yaml": "^4.3.2",

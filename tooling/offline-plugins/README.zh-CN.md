@@ -79,7 +79,7 @@ cd <dsh-market 仓库> && npm run build && npm pack --pack-destination <本目�
 在 `selection.json` 里登记：
 
 ```json
-"vendor": { "dshmarket": "vendor/dshmarket-1.73.18-intra.2.tgz" }
+"vendor": { "dshmarket": "vendor/dshmarket-1.73.18-intra.3.tgz" }
 ```
 
 构建时它按 `file:` 依赖解析（它的传递依赖照常从 npm 取、照常进锁），打进 `tarballs/`；包名、版本和 `dsh` 字段从 tgz 里的 `package.json` 读出来，所以它会出现在市场列表、`plugins.txt`，并被 `Install-plugins.cmd` 一起安装。`--check` 会核对 tgz 里的包名与登记名一致。
