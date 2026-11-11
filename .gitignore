@@ -54,7 +54,12 @@ native/system/test/bin/
 
 # Local tool state and the operator-facing guide. The guide ships inside the
 # offline bundle and stays out of the repository on purpose: it describes one
-# deployment, not the project.
+# deployment, not the project. The same goes for the two .docx manuals (the
+# customer one and the earlier typeset draft) and for the build output itself,
+# which is hundreds of megabytes of tarballs.
 .workbuddy/
 tooling/offline-plugins/INSTALL-GUIDE.zh-CN.md
 tooling/offline-plugins/DeepSeek-Harness-安装指引.docx
+tooling/offline-plugins/NJCB-Harness-安装指引.docx
+tooling/offline-plugins/offline-output/
+tooling/offline-plugins/njcb-plugins.zip
