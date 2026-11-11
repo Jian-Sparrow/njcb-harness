@@ -57,3 +57,4 @@ native/system/test/bin/
 # deployment, not the project.
 .workbuddy/
 tooling/offline-plugins/INSTALL-GUIDE.zh-CN.md
+tooling/offline-plugins/DeepSeek-Harness-安装指引.docx

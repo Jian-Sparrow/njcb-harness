@@ -239,7 +239,7 @@ await fs.writeFile(path.join(output, 'SHA256SUMS.txt'), checksums.sort().join('\
 // side has no way to fetch them, and it is the side that needs to publish.
 // INSTALL-GUIDE.zh-CN.md is deliberately untracked, so a build from a clean
 // checkout does not have it; the copy is skipped rather than failing the build.
-for (const file of ['serve.mjs', 'add-plugin.mjs', 'Add-plugin.cmd', 'Install-plugins.ps1', 'Start-offline-registry.cmd', 'Install-plugins.cmd', 'README.zh-CN.md', 'INSTALL-GUIDE.zh-CN.md']) {
+for (const file of ['serve.mjs', 'add-plugin.mjs', 'Add-plugin.cmd', 'Install-plugins.ps1', 'Clean-profile.ps1', 'Clean-profile.cmd', 'Start-offline-registry.cmd', 'Install-plugins.cmd', 'README.zh-CN.md', 'INSTALL-GUIDE.zh-CN.md', 'DeepSeek-Harness-安装指引.docx']) {
   const from = path.join(source, file);
   if (!(await fs.stat(from).catch(() => null))) {
     console.log(`skipped ${file} (not present in this checkout)`);

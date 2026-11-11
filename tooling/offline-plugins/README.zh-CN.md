@@ -17,6 +17,8 @@
 5. 装完后脚本会往 profile 的 `cordis.patch.yml` 里写 `- id: dsh-market` / `offline: true`，把插件市场切到内网模式（只列本源，不再连公网目录站），省掉使用者手改 YAML 这一步。写之前它检查三件事：profile 目录存在；文件里没有已启用的 `dsh-market` 行；没有别人配的 `npmRegistry`（那种情况只提示不覆盖）。新建 profile 的补丁层是一个 `[]` 空数组，直接往后追加会让整个文件解析失败、客户端起不来，所以它是**替换**那个 `[]` 而不是追加。文件按字节写入（不做转码），Notepad 存成 ANSI/GBK 的注释不会被打乱。不需要内网模式时加 `-SkipMarketConfig`。
 6. 安装完成可关闭临时源窗口。插件自身运行不依赖这个源；后续安装/升级时才需再次打开。
 
+装失败报 `No matching version found` 时不要重装客户端，也不要改版本号：双击 `Clean-profile.cmd` 清掉旧的解析记录，再重跑 `Install-plugins.cmd` 即可（原理与逐条动作见「故障定位」）。
+
 源仅收录本次清单与依赖，不是全量 npm 镜像。已有额外插件、额外 scope 源配置或代理配置可能导致安装请求超出清单；如出现 `NOT IN SNAPSHOT`，保留包名和错误日志，不要随意更改版本。不要点「全部更新」尝试更新到公网最新版。
 
 ## 往源里加插件
@@ -126,7 +128,13 @@ cd <dsh-market 仓库> && npm run build && npm pack --pack-destination <本目�
 
 ## 故障定位
 
-**`No matching version found for <包>@<版本>`**：客户端 profile 里留着上一份源（或更早一次联网安装）的 `pnpm-lock.yaml`，它钉的传递依赖版本不在当前源里。这是整批安装失败，不是某个插件坏了。处置：退出应用，把 `%USERPROFILE%\.dsh\profiles\desktop` 下的 `pnpm-lock.yaml` 和 `node_modules` 改名备份（保留 `package.json`、`pnpm-workspace.yaml`、`cordis.patch.yml`），重跑 `Install-plugins.cmd`。**不要**往源里手工补那个包来绕过——下一个传递依赖还会撞。
+**`No matching version found for <包>@<版本>`**：客户端 profile 里留着上一份源（或更早一次联网安装）的解析结果——`pnpm-lock.yaml` 钉死了传递依赖的版本，`node_modules` 是它们的实物。源里的包更新过之后，这些旧版本就不存在了，于是整批安装失败，不是某个插件坏了。处置：双击 `Clean-profile.cmd`，然后重跑 `Install-plugins.cmd`。它做三件事，顺序不能变：
+
+1. 结束 `njcb harness.exe` 及其子进程（托盘里的应用会锁住 `node_modules` 里的 `.node` 原生模块，锁着就改不了名）；
+2. 把 `pnpm-lock.yaml` 和 `node_modules` **改名**成 `*.bak`——不是删除，几百 MB 的目录改名是瞬间的，随时能改回来；
+3. 打印备份清单、占用体积和下一步，页面需要回收空间时给出可复制的删除命令。
+
+`package.json`、`pnpm-workspace.yaml`、`cordis.patch.yml` 不动，所以内网模式、模型配置、已填的插件设置都保留。已有 `*.bak` 时新备份带时间戳另存，不会覆盖上一份。只想看会做什么、不动文件：`Clean-profile.cmd -DryRun`。**不要**往源里手工补那个包来绕过——下一个传递依赖还会撞。
 
 **`未找到相关插件`**：源通了，但源里没有这个包名。核对 `node add-plugin.mjs --list`；如果缺的是 `dshmarket`，说明这份 ZIP 是 22 个之前的旧包。
 
