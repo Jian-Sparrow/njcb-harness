@@ -6,8 +6,11 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const registryFile = path.join(root, 'registry.json');
 const port = Number(process.env.NJCB_OFFLINE_PORT || 4873);
-if (!Number.isSafeInteger(port) || port < 1024 || port > 65535) throw new Error('Invalid NJCB_OFFLINE_PORT');
-const base = `http://127.0.0.1:${port}`;
+if (!Number.isSafeInteger(port) || (port !== 0 && port < 1024) || port > 65535) throw new Error('Invalid NJCB_OFFLINE_PORT');
+let base = `http://127.0.0.1:${port}`;
+const pythonRoot = path.join(root, 'python');
+const pythonManifest = path.join(pythonRoot, 'files.json');
+const pythonFiles = fs.existsSync(pythonManifest) ? JSON.parse(fs.readFileSync(pythonManifest, 'utf8')) : {};
 
 // The snapshot can change while this window is open: add-plugin.mjs publishes
 // into registry.json and tarballs/ from this same folder. Restarting a console
@@ -65,6 +68,19 @@ const server = http.createServer((req, res) => {
   let url, requested;
   try { url = new URL(req.url, base); requested = decodeURIComponent(url.pathname).replace(/^\//, ''); }
   catch { return reply(400, { error: 'Invalid URL' }); }
+  if (requested.startsWith('python/')) {
+    let relative = requested.slice(7);
+    if (relative.endsWith('/')) relative += 'index.html';
+    if (!Object.hasOwn(pythonFiles, relative) || relative.split('/').some(part => part === '..' || part.includes('\\'))) {
+      return reply(404, { error: 'Python package not included in this offline snapshot' });
+    }
+    res.writeHead(200, { 'content-type': pythonFiles[relative], 'cache-control': 'no-store' });
+    if (req.method === 'HEAD') return res.end();
+    const stream = fs.createReadStream(path.join(pythonRoot, relative));
+    stream.on('error', error => res.destroy(error));
+    stream.pipe(res);
+    return;
+  }
   if (requested === '' || requested === '-/ping') return reply(200, { service: 'njcb-offline-plugins', selection: data.selection });
   // npm's search API, which is how a client discovers what an unfamiliar
   // registry holds. Only the packages that are plugins are described here:
@@ -116,4 +132,8 @@ const server = http.createServer((req, res) => {
   return reply(404, { error: 'Package/version not included in this offline snapshot' });
 });
 server.on('error', error => { console.error(error.message); process.exitCode = 1; });
-server.listen(port, '127.0.0.1', () => console.log(`NJCB offline registry: ${base}/\nKeep this window open while installing plugins. Ctrl+C to stop.`));
+server.listen(port, '127.0.0.1', () => {
+  base = `http://127.0.0.1:${server.address().port}`;
+  loaded = '';
+  console.log(`NJCB offline registry: ${base}/\nPython index: ${base}/python/simple/ (${Object.keys(pythonFiles).length ? 'ready' : 'not bundled'})\nKeep this window open while downloading npm or Python packages. Ctrl+C to stop.`);
+});

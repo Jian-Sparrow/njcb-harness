@@ -26,6 +26,8 @@ jobs:
         run: node --test tooling/offline-plugins/serve.test.mjs tooling/offline-plugins/add-plugin.test.mjs tooling/offline-plugins/selection-lock.test.mjs
       - name: Build original npm artifact snapshot
         run: node tooling/offline-plugins/build-bundle.mjs "${{ runner.temp }}/njcb-offline-plugins"
+      - name: Include locked Python 3.12 Windows x64 wheels
+        run: node tooling/offline-plugins/build-python.mjs "${{ runner.temp }}/njcb-offline-plugins"
       - name: Include portable Windows Node and license
         shell: pwsh
         run: |
@@ -54,7 +56,7 @@ jobs:
           $dest = '${{ runner.temp }}/delivery'
           New-Item -ItemType Directory -Force $dest | Out-Null
           $count = (Get-Content '${{ runner.temp }}/njcb-offline-plugins/plugins.txt' | Where-Object { $_.Trim() }).Count
-          $zip = "$dest/njcb-plugins-$count-win-x64-for-0.2.2-alpha.3.zip"
+          $zip = "$dest/njcb-plugins-$count-python-win-x64-for-0.2.2-alpha.3.zip"
           & 7z a -tzip -mx=5 $zip '${{ runner.temp }}/njcb-offline-plugins/*'
           if ($LASTEXITCODE) { throw 'Archive failed' }
           "$((Get-FileHash $zip).Hash.ToLowerInvariant())  $(Split-Path $zip -Leaf)" | Set-Content "$dest/SHA256.txt" -Encoding ascii
