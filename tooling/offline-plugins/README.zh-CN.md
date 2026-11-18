@@ -145,7 +145,7 @@ cd <dsh-market 仓库> && npm run build && npm pack --pack-destination <本目�
 
 流水线同时打包 `python/`，适用 DSH 自带的 Windows x64 Python 3.12。固定版本和 SHA256 见 `python-lock.json`，包括 PyMuPDF、python-pptx、Pillow、lxml、XlsxWriter、typing-extensions。后五项沿用主程序运行时锁定版本。软件包自带许可证保留在原始 wheel 中。
 
-1. 启动过 Harness 一次后，双击 `Install-python.cmd`。它自动定位当前用户的 DSH Python，从本地 wheels 安装到 Python 用户目录，执行 PDF 转图片再生成 PPTX 的验证。安装时可以关闭源窗口。自定义 Python 路径使用 `Install-python.cmd -PythonPath "D:\path\python.exe"`。
+1. 启动过 Harness 一次后，双击 `Install-python.cmd`。它优先定位当前用户的 DSH Python；尚未展开时使用主程序安装目录中的 Python。从本地 wheels 安装到 Python 用户目录，执行 PDF 转图片再生成 PPTX 的验证。安装时可以关闭源窗口。自定义主程序安装目录使用 `Install-python.cmd -InstallDir "D:\Apps\njcb harness"`。自定义 Python 路径使用 `Install-python.cmd -PythonPath "D:\path\python.exe"`。
 2. 脚本会备份已有的 `%APPDATA%\pip\pip.ini`，再将当前用户 pip 的主源和备用源都设置为 `http://127.0.0.1:4873/python/simple/`。这个设置影响该用户的其他 Python 环境。仅安装依赖时可传 `-SkipPipConfig`。环境变量、环境级配置或命令行参数可能覆盖用户配置。
 3. 后续按需安装时，双击 `Start-offline-registry.cmd`，同一窗口同时提供 npm 和 Python 源。命令示例：`Python.cmd -m pip install PyMuPDF`。源只提供已收录的版本，新增依赖需要更新锁文件、补齐传递依赖并重新构建。
 4. 告诉 Agent 使用 `%USERPROFILE%\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe` 执行脚本，并用同一路径加 `-m pip` 安装包。自定义 DSH_HOME 时替换该目录。在 Python 代码中安装包应使用 `subprocess.check_call([sys.executable, '-m', 'pip', ...])`。

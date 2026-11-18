@@ -1,6 +1,7 @@
-param([Parameter(Mandatory=$true)][string]$Bundle)
+param([Parameter(Mandatory=$true)][string]$Bundle, [Parameter(Mandatory=$true)][string]$InstallDir)
 $ErrorActionPreference = 'Stop'
 $python = Join-Path $env:DSH_HOME 'dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
+if (!(Test-Path $python)) { $python = Join-Path $InstallDir 'resources\runtime\primary-runtime\dependencies\python\python.exe' }
 if (!(Test-Path $python)) { throw "Bundled DSH Python not found: $python" }
 $work = Join-Path $env:RUNNER_TEMP ('njcb-python-test-' + [guid]::NewGuid().ToString('N'))
 $oldUserBase = $env:PYTHONUSERBASE
@@ -31,7 +32,7 @@ else:
   & $python -c $probe
   if ($LASTEXITCODE) { throw 'Python offline firewall check failed.' }
   # The shipped installer configures pip and installs directly from the wheel directory.
-  & (Join-Path $Bundle 'Install-python.ps1') -PythonPath $python
+  & (Join-Path $Bundle 'Install-python.ps1') -InstallDir $InstallDir
   if ($LASTEXITCODE) { throw 'Shipped Python installation failed.' }
   & $python -m pip config --user get global.index-url
   if ($LASTEXITCODE) { throw 'User pip configuration missing.' }

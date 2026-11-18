@@ -1,11 +1,15 @@
 param(
   [string]$PythonPath,
+  [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'Programs\njcb harness'),
   [switch]$SkipPipConfig
 )
 $ErrorActionPreference = 'Stop'
 if (!$PythonPath) {
   $dshRoot = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $env:USERPROFILE '.dsh' }
   $PythonPath = Join-Path $dshRoot 'dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
+  if (!(Test-Path $PythonPath)) {
+    $PythonPath = Join-Path $InstallDir 'resources\runtime\primary-runtime\dependencies\python\python.exe'
+  }
 }
 if (!(Test-Path $PythonPath)) { throw "DSH Python not found: $PythonPath. Start Harness once, or pass -PythonPath." }
 $PythonPath = (Resolve-Path $PythonPath).Path
