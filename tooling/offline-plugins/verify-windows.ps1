@@ -41,7 +41,6 @@ try {
   Set-NetFirewallProfile -All -Enabled True
   & $node -e "fetch('https://registry.npmjs.org/',{signal:AbortSignal.timeout(4000)}).then(()=>{console.error('Internet unexpectedly reachable');process.exit(1)}).catch(()=>console.log('External network blocked'))"
   if ($LASTEXITCODE) { throw 'Offline firewall check failed' }
-  & (Join-Path $PSScriptRoot 'verify-python.ps1') -Bundle $Bundle -InstallDir $dest
   & (Join-Path $Bundle 'Install-plugins.ps1') -InstallDir $dest
   if ($LASTEXITCODE) { throw 'Offline profile installation failed' }
   $selected = Get-Content "$Bundle\selection.json" -Raw | ConvertFrom-Json

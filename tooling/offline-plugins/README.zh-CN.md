@@ -140,15 +140,3 @@ cd <dsh-market 仓库> && npm run build && npm pack --pack-destination <本目�
 如果再次出现 `configured to use 11.7.0 of pnpm / current 11.28.5`，这是目标 profile 或上层目录中的包管理器版本声明冲突，不是缺少 npm 源。关闭应用后先尝试本包的批量安装脚本（它清除子进程继承的 Corepack 上下文）；如仍报错，保留 `%USERPROFILE%\.dsh\profiles\desktop\package.json`、`pnpm-workspace.yaml` 与 `.plugin-manager\logs`，定位声明后再修改。不要重装系统 pnpm 或删除整个 profile。
 
 完整依赖原始 npm 压缩包保留上游许可证与 NOTICE；`registry.json` 记录来源（上游下载地址，或手工加入时的 `upload:<文件名>`）、版本、SHA256。`SHA256SUMS.txt` 校验所有 tarball。`validation.json` 记录本次 Windows 构建验证范围；验证不包含真实模型、OpenViking 服务连接或银行业务场景验收。
-
-## Python 离线依赖（PDF 转 PPT）
-
-流水线同时打包 `python/`，适用 DSH 自带的 Windows x64 Python 3.12。固定版本和 SHA256 见 `python-lock.json`，包括 PyMuPDF、python-pptx、Pillow、lxml、XlsxWriter、typing-extensions。后五项沿用主程序运行时锁定版本。软件包自带许可证保留在原始 wheel 中。
-
-1. 启动过 Harness 一次后，双击 `Install-python.cmd`。它优先定位当前用户的 DSH Python；尚未展开时使用主程序安装目录中的 Python。从本地 wheels 安装到 Python 用户目录，执行 PDF 转图片再生成 PPTX 的验证。安装时可以关闭源窗口。自定义主程序安装目录使用 `Install-python.cmd -InstallDir "D:\Apps\njcb harness"`。自定义 Python 路径使用 `Install-python.cmd -PythonPath "D:\path\python.exe"`。
-2. 脚本会备份已有的 `%APPDATA%\pip\pip.ini`，再将当前用户 pip 的主源和备用源都设置为 `http://127.0.0.1:4873/python/simple/`。这个设置影响该用户的其他 Python 环境。仅安装依赖时可传 `-SkipPipConfig`。环境变量、环境级配置或命令行参数可能覆盖用户配置。
-3. 后续按需安装时，双击 `Start-offline-registry.cmd`，同一窗口同时提供 npm 和 Python 源。命令示例：`Python.cmd -m pip install PyMuPDF`。源只提供已收录的版本，新增依赖需要更新锁文件、补齐传递依赖并重新构建。
-4. 告诉 Agent 使用 `%USERPROFILE%\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe` 执行脚本，并用同一路径加 `-m pip` 安装包。自定义 DSH_HOME 时替换该目录。在 Python 代码中安装包应使用 `subprocess.check_call([sys.executable, '-m', 'pip', ...])`。
-5. 安装成功后可关闭源窗口。已安装包可由启用用户包目录的同一个 Python 使用。使用 `-I`、`-s`、设置 `PYTHONNOUSERSITE` 或另一个虚拟环境时，需在对应环境重新安装。
-
-默认端口可在启动和安装配置前设置 `NJCB_OFFLINE_PORT`。该包验证的是 PDF 页面转图片放入 PPT，输出文字可编辑、OCR、版式重建需相应工具和单独验收。下载服务始终只监听本机回环地址。

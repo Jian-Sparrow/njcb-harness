@@ -26,24 +26,17 @@ const snapshot = {
 };
 
 /** Start the snapshot server over `snapshot` in a temporary directory. */
-async function serve(python = false) {
+async function serve() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'njcb-registry-test-'));
   await fs.copyFile(new URL('./serve.mjs', import.meta.url), path.join(root, 'serve.mjs'));
   await fs.mkdir(path.join(root, 'tarballs'));
   await fs.writeFile(path.join(root, 'tarballs', 'test.tgz'), 'fixture');
   await fs.writeFile(path.join(root, 'registry.json'), JSON.stringify(snapshot));
-  if (python) {
-    await fs.mkdir(path.join(root, 'python/simple/demo'), { recursive: true });
-    await fs.mkdir(path.join(root, 'python/wheels'));
-    await fs.writeFile(path.join(root, 'python/simple/demo/index.html'), '<a href="../../wheels/demo.whl#sha256=abc">demo</a>');
-    await fs.writeFile(path.join(root, 'python/wheels/demo.whl'), 'wheel bytes');
-    await fs.writeFile(path.join(root, 'python/files.json'), JSON.stringify({ 'simple/demo/index.html': 'text/html', 'wheels/demo.whl': 'application/octet-stream' }));
-  }
-  const port = 0;
+  const port = 40000 + Math.floor(Math.random() * 10000);
   const child = spawn(process.execPath, [path.join(root, 'serve.mjs')], { env: { ...process.env, NJCB_OFFLINE_PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe'] });
-  const [ready] = await Promise.race([once(child.stdout, 'data'), once(child, 'exit').then(([code]) => { throw new Error(`Server exit ${code}`) })]);
+  await Promise.race([once(child.stdout, 'data'), once(child, 'exit').then(([code]) => { throw new Error(`Server exit ${code}`) })]);
   return {
-    base: ready.toString().match(/http:\/\/127\.0\.0\.1:\d+/)[0],
+    base: `http://127.0.0.1:${port}`,
     async close() {
       if (child.exitCode === null) { child.kill(); await once(child, 'exit'); }
       await fs.rm(root, { recursive: true, force: true });
@@ -93,27 +86,6 @@ test('the listing endpoints describe plugins, not the dependency tree', async ()
     const all = await (await fetch(base + '/-/all')).json();
     assert.deepEqual(Object.keys(all).sort(), ['@scope/plugin', 'left-pad']);
     assert.equal(all['left-pad'].versions['1.3.0'].name, 'left-pad');
-  } finally {
-    await server.close();
-  }
-});
-
-
-test('Python simple index serves wheel links and bytes while npm stays available', async () => {
-  const server = await serve(true);
-  try {
-    const url = server.base + '/python/simple/demo/';
-    const index = await fetch(url);
-    assert.equal(index.headers.get('content-type'), 'text/html');
-    const href = (await index.text()).match(/href="([^"]+)"/)[1];
-    const wheel = new URL(href, url);
-    assert.equal(await (await fetch(wheel)).text(), 'wheel bytes');
-    assert.equal((await fetch(wheel, { method: 'HEAD' })).status, 200);
-    assert.equal((await fetch(server.base + '/python/files.json')).status, 404);
-    assert.equal((await fetch(server.base + '/python/wheels/..%2f..%2fregistry.json')).status, 404);
-    assert.equal((await fetch(server.base + '/python/simple/missing/')).status, 404);
-    assert.equal((await fetch(wheel, { method: 'POST' })).status, 405);
-    assert.equal((await fetch(server.base + '/-/ping')).status, 200);
   } finally {
     await server.close();
   }
