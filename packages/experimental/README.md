@@ -27,7 +27,7 @@ Install and compose experimental capabilities explicitly, without a product-supp
 
 **Optional** means a user explicitly selects the capability. **Official** means the project maintains and lists the package in the Plugins page. Neither describes maturity; publication, default installation, and GUI visibility do not determine maturity either. Product packages outside this group have maintained product roles, while their public APIs still follow the repository's pre-stable policy.
 
-Promotion requires a named product role, documented public behavior and limitations, current consumers, release contents, and test evidence. Move the package to its product group, apply that group's naming rules, and update affected consumers together. The [subtree rules](AGENTS.md) govern dependency isolation and publication.
+Promotion requires a named product role, documented public behavior and limitations, current consumers, release contents, and test evidence. Move the package to its product group and update affected consumers together. The [subtree rules](AGENTS.md) govern package naming, dependency isolation, and publication.
 
 -----
 
@@ -45,6 +45,7 @@ Promotion requires a named product role, documented public behavior and limitati
 | [`personalized-recommendations`](personalized-recommendations/README.md) | Default-disabled bundle of personalized pages, plugin recommendations and their action cards | — |
 | [`tool-session-query`](tool-session-query/README.md) | Workspace-authorized model session search, trace, and event reads | — |
 | [`session-search`](session-search/README.md) | Optional experimental global session search tools | — |
+| [`deepseek-chat-import`](deepseek-chat-import/README.md) | Optional upload of DeepSeek website chat exports as Sessions in a chosen Workspace | `ctx.deepseekChatImport` |
 | [`ralph-bundle`](ralph-bundle/README.md) | Optional repeated delegation with an isolated workflow engine | — |
 | [`terminal-bundle`](terminal-bundle/README.md) | Optional global persistent terminal tools | — |
 | [`badge-skill-bundle`](badge-skill-bundle/README.md) | Optional powered-by-dsh badge skill | — |
@@ -56,6 +57,7 @@ Promotion requires a named product role, documented public behavior and limitati
 | [`webhook-github`](webhook-github/README.md) | Signed GitHub webhook ingress | — |
 | [`session-title-all-prompts-llm`](session-title-all-prompts-llm/README.md) | Session titles from all human prompts | — |
 | [`tool-terminal`](tool-terminal/README.md) | Persistent terminal tools | — |
+| [`terminal-panel`](terminal-panel/README.md) | Agent terminals in the Web sidebar and read-only user terminal tools | — |
 | [`tool-ralph`](tool-ralph/README.md) | Bounded repeated delegated tasks | — |
 | [`skill-badge`](skill-badge/README.md) | The powered-by-dsh badge skill | — |
 | [`translator`](translator/README.md) | Anonymous Google and Bing text translation | `ctx.translator` |

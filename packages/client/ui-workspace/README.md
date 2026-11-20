@@ -77,7 +77,7 @@ Session rows render the runtime's live `pendingInteraction` classification: appr
 
 Grouped and flat Session rows show a clock mark when the Session has active scheduled tasks. It is an occupant of the row's `sidebar.session.row.leading` seat, so it renders only on a row whose primary status is idle and never beside the row's own status dot; an archived row keeps that cell blank, and a search result has no leading seat and shows no mark. It is not a button, has no tab stop, and a press on its area does not open the row. The mark's own read and the meaning of its active-task condition belong to [ui-schedule](../ui-schedule/README.md).
 
-Workspace headers share one `workspace` context-menu target between right-click and the ellipsis. Rename and Delete use the existing confirmation dialogs and recheck Workspace existence and access before opening; native directory reveal is contributed by [ui-open-in-app](../ui-open-in-app/README.md). The menu remains available for native and plugin actions when mutation permissions are absent. Opening it changes neither expansion nor Session selection.
+Workspace headers share one `workspace` context-menu target, declared by this package, between right-click and the ellipsis. Rename and Delete use the existing confirmation dialogs and recheck Workspace existence and access before opening; native directory reveal is contributed by [ui-open-in-app](../ui-open-in-app/README.md). The menu remains available for native and plugin actions when mutation permissions are absent. Opening it changes neither expansion nor Session selection.
 
 Session rows share their existing action contributions between right-click and the ellipsis trigger through [ui-context-menu](../ui-context-menu/README.md). The captured Session stays the target without changing selection; `sidebar.workspaces.session.menu.item` remains the component extension position. The shipped groups are Pin, Rename, Fork; Copy session ID and the optional native directory reveal; then Archive, with separators before Copy session ID and Archive.
 
@@ -85,7 +85,7 @@ Session rows share their existing action contributions between right-click and t
 
 `ctx.uiWorkspace.openSession(target)` synchronously replaces the owned `mainView` reference and returns the main area to Conversation without waiting for `reference.ready`, so history loading renders inside the selected Session view. The target may be a known Session id or a durable direct-parent subagent address; an explicit address does not require a preloaded parent catalog. `openWorkspace(id, beforeOpen?, options?)` opens a Workspace blank only if no later navigation has superseded the request; New Session opens the same blank as Workspace reopening, so it returns to that blank's unsent draft. `forkSession(id, onCreated?, options?)` creates the child without navigating or superseding a pending navigation; `allowMigration` carries the caller's migration permission. The optional synchronous preparation callback runs after the target is retained and only for a current Workspace request, so superseded requests do not move composer drafts. Navigation or owner disposal suppresses the late UI commit, not the underlying Session creation.
 
-Session and Workspace rows derive their affordances from the browser root's access Hooks: the global `useRemoteAccess('session/create')` gates every New Session entry, `useWorkspaceAccess` gates a Workspace's create, rename, delete, and reorder verbs, and `useSessionAccess` gates a Session row's rename, fork, drag, pin, archive, and unarchive verbs plus the search result's restore control. A refused verb is not rendered, while every Host request remains authoritative. Startup restoration retains its main reference without changing the selected panel or cancelling a later navigation. Archiving the main Session releases its reference and clears the main selection. Selection failure leaves a global panel visible. Session rows read `usePanelInfo` to suppress their selected appearance while a global panel is active; search and directory-picker focus alone do not leave that panel.
+Session and Workspace rows derive their affordances from the browser root's access Hooks: `useWorkspaceAccess` gates a Workspace's create, rename, delete, and reorder verbs, and `useSessionAccess` gates a Session row's rename, fork, drag, pin, archive, and unarchive verbs plus the search result's restore control. A refused verb is not rendered, while every Host request remains authoritative. The Ungrouped header offers no New Session, because it has no backing Workspace to start one in. Startup restoration retains its main reference without changing the selected panel or cancelling a later navigation. Archiving the main Session releases its reference and clears the main selection. Selection failure leaves a global panel visible. Session rows read `usePanelInfo` to suppress their selected appearance while a global panel is active; search and directory-picker focus alone do not leave that panel.
 
 Navigation and startup restoration obtain the selected Session's projections from its `follow`; neither issues a separate projection refresh for that Session or its parent, except that restoring a saved blank first reloads that Session's projections, because listed values are cached hints that can lag its log after an unclean Host exit.
 
@@ -109,7 +109,7 @@ The browser entry declares three root-scoped `list` child seats on each Session 
 
 The leading seat occupies the status cell only while the row's primary status is idle and leaves archived rows blank. The trailing seat accepts non-interactive icons in ascending `order`, after the time label and before the pin marker. Blank rows omit the trailing seat; an empty seat adds no spacing. The hover seat mounts only while the row's hover card is open.
 
-On hover-capable devices, hovering a Session row, giving keyboard focus to the row or its actions, or opening its menu replaces the time, trailing icons, and pin marker with action buttons. A pointer click does not keep the buttons visible after the pointer leaves. Built-in Session and Workspace row action buttons use 24px click targets with compensated margins that retain their compact layout footprint and icon positions.
+On hover-capable devices, hovering a Session row, giving keyboard focus to the row or its actions, or opening its menu replaces the time, trailing icons, and pin marker with action buttons. A pointer click does not keep the buttons visible after the pointer leaves. Built-in Session and Workspace row action buttons use 24px click targets with compensated margins that retain their compact layout footprint and icon positions. Both row types render the shared `contextMenu.button` Factory with a captured target, localized label, and row styling; they omit the toolbar size to preserve row geometry. The browser passes its standard `renderFactorySlot` through grouped and flat lists, while rows read the shared target to keep the action strip visible and suppress hover cards.
 
 Session rows accept Tab focus and open with unmodified Enter or Space; Tab also reaches their action buttons, while modified keys remain available to global shortcuts.
 
@@ -117,7 +117,41 @@ Client callers can pass `prompt`, `whenDraftExists`, and `clearPreviousDraft` in
 
 ### The directory-flow hole
 
-Each registration declares a **directory-flow child hole** (`single` kind: `conversation.hero.workspace.directoryFlow` / `sidebar.workspaces.directoryFlow`) that the composed picker package's client half fills with its picking interaction — the `-native` backend's renderless OS-chooser driver, an in-app browsing dialog under a `-browse` composition. The flat **Add workspace...** action renders only while the surface's hole is occupied; an empty hole means the composition has no picking affordance. The sidebar Add workspace action preserves an existing blank Session and its draft. This package owns the trigger and the adoption: the occupant reports one picked path per open through the hole's owner conversation (`open`/`busy`/`onPicked`/`onCancel`/`onError`), and the owner adopts it through the object layer, selecting the committed Workspace only after its list projection has refreshed.
+Each registration declares a **directory-flow child hole** (`single` kind: `conversation.hero.workspace.directoryFlow` / `sidebar.workspaces.directoryFlow`), and the `workspace.picker` Factory declares `workspace.picker.directoryFlow`; the composed picker package's client half fills all three with its picking interaction — the `-native` backend's renderless OS-chooser driver, an in-app browsing dialog under a `-browse` composition. The flat **Add workspace...** action renders only while the surface's hole is occupied; an empty hole means the composition has no picking affordance. The sidebar Add workspace action preserves an existing blank Session and its draft. This package owns the trigger and the adoption: the occupant reports one picked path per open through the hole's owner conversation (`open`/`busy`/`onPicked`/`onCancel`/`onError`), and the owner adopts it through the object layer, selecting the committed Workspace only after its list projection has refreshed.
+
+### The reusable Workspace picker
+
+Another plugin renders the hero's Workspace picker through the root-scoped `workspace.picker` Component Factory instead of importing this package's component. Its caller input, the type `WorkspacePickerInput` from `ui-workspace/client`, is the hero's owner props: `open`, `anchorRef`, `selectedId`, `onPick`, and `onClose`. The caller owns the anchor control, the open state, and what a pick means, and closes the menu in `onPick`. An occurrence lists the existing Workspaces and, while a directory-picker package occupies `workspace.picker.directoryFlow`, **Add workspace...**, which runs that flow, calls `workspaces.create({ path })`, and passes the new Workspace id to `onPick`; adoption failures stay in this package's folder-error dialog. The definition and its hole are registered directly in `apply`, because they depend on no other declaration, and leave with this plugin.
+
+A caller needs only the standard `renderFactorySlot` prop that every registered component receives and the type-only `ui-workspace/client` import that loads the Factory declaration; its own registration declares nothing for the call. Without ui-workspace the call renders its optional `fallback`. The menu portals to the document body and positions against `anchorRef`, above a primitives `Modal`, so an occurrence may render inside the caller's dialog.
+
+```tsx
+import { useRef, useState } from 'react'
+import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+
+function WorkspaceField({ label, renderFactorySlot }: PropsRenderFactories & { label: string }) {
+  const anchorRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  const [workspaceId, setWorkspaceId] = useState<WorkspaceId | undefined>(undefined)
+  return (
+    <>
+      <button ref={anchorRef} type="button" onClick={() => { setOpen(value => !value) }}>{label}</button>
+      {renderFactorySlot('workspace.picker', {
+        open,
+        anchorRef,
+        selectedId: workspaceId,
+        onPick: (picked) => {
+          setOpen(false)
+          setWorkspaceId(picked)
+        },
+        onClose: () => { setOpen(false) },
+      })}
+    </>
+  )
+}
+```
 
 ### Session row actions
 
@@ -229,6 +263,8 @@ These pages cover the sidebar host, the hero surface, and the picking backends.
 - [Workspace Controller](../../api/workspace-controller/README.md) — the Host mutations and framework-neutral Client projection that own Workspaces, membership, and Workspace group order.
 
 -----
+
+The client `workspace/archive-notice` waterfall supplies localized follow-up text and tone for the existing archive notice. `workspace/archive-followup-failed` replaces that notice after an admitted background operation fails, and `workspace/archive-followup-settled` returns to the plain notice when an announced follow-up ended without acting; both preserve undo and the archive filter action.
 
 <a id="model-experience"></a>
 ## Model Experience

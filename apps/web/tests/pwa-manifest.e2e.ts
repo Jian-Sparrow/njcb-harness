@@ -63,7 +63,7 @@ it('ships install metadata with the built web application', async () => {
   // each mount its own identity. `public-mount.e2e.ts` reads the resolved form.
   expect(manifest).toEqual({
     name: 'njcb harness',
-    short_name: 'DSH',
+    short_name: 'njcb harness',
     start_url: './',
     scope: './',
     // `standalone` keeps the phone's status bar; `fullscreen` hides it and the
@@ -108,16 +108,16 @@ it('decodes every generated and shipped icon with its full artwork and opaque co
   } finally { await browser.close() }
 })
 
-it('ships fixed-color favicons selected by document media queries', async () => {
+it('ships the NJCB artwork in both document color schemes', async () => {
   const index = await readFile(join(DIST_ROOT, 'index.html'), 'utf8')
   expect(index).toContain('<link rel="icon" type="image/svg+xml" href="./favicon-dark.svg" media="(prefers-color-scheme: dark)" />')
   expect(index).toContain('<link rel="icon" type="image/svg+xml" href="./favicon.svg" media="(prefers-color-scheme: light)" />')
   const light = await readFile(join(DIST_ROOT, 'favicon.svg'), 'utf8')
   const dark = await readFile(join(DIST_ROOT, 'favicon-dark.svg'), 'utf8')
   expect(light).not.toContain('<style>')
-  expect(light).toContain('fill="#000"')
-  expect(dark).toContain('fill="#fff"')
-  expect(dark.replace('fill="#fff"', 'fill="#000"')).toBe(light)
+  expect(light).toContain('data:image/png;base64,')
+  expect(light).toBe(await readFile(join(DIST_ROOT, '../public/favicon.svg'), 'utf8'))
+  expect(dark).toBe(light)
 })
 
 it('preserves fractional coverage along the Apple icon curves', async () => {

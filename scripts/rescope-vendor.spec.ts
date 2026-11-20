@@ -40,17 +40,27 @@ it('lists the complete eligible corpus when tracked paths exceed one MiB', () =>
 describe('rescope file selection', () => {
   it('preserves the recorded npm resolution', () => {
     expect(isRescopeExcluded('scripts/dependency-catalog/package-lock.json')).toBe(true)
+    expect(isRescopeExcluded('tooling/offline-plugins/selection-lock.json')).toBe(true)
   })
 
   it.each([
     'scripts/dependency-catalog/package.json',
     'scripts/dependency-catalog/source.ts',
     'scripts/other/package-lock.json',
+    'tooling/offline-plugins/selection.json',
     'packages/example/src/index.ts',
     'packages/example/package.json',
   ])('keeps %s subject to upstream package-name checks', (file) => {
     expect(isRescopeExcluded(file)).toBe(false)
   })
+})
+
+it.each([
+  'apps/web/tests/creator-persona.e2e.ts',
+  'docs/upgrade-guide/v0.2.2-rc.1/subagent-interrupt-default/guide.md',
+  'docs/upgrade-guide/v0.2.2-rc.1/subagent-interrupt-default/guide.zh.md',
+])('preserves the cordis preset id in %s', (file) => {
+  expect(rescopeText('The `cordis` preset.\n', file)).toEqual({ text: 'The `cordis` preset.\n', lines: 0 })
 })
 
 describe('exactEditState', () => {
@@ -90,10 +100,14 @@ describe('product identifiers', () => {
     'apps/web/tests/developer-tools-settings.e2e.ts',
     'docs/subsystems/extensions.md',
     'docs/subsystems/extensions.zh.md',
+    'docs/tool-catalog.md',
+    'docs/tool-catalog.zh.md',
     'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.md',
     'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.zh.md',
     'docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.md',
     'docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.zh.md',
+    'docs/upgrade-guide/v0.2.2-alpha.2/fs-observation-policy-default-off/guide.md',
+    'docs/upgrade-guide/v0.2.2-alpha.2/fs-observation-policy-default-off/guide.zh.md',
     'docs/user/guide/schedule.md',
     'docs/user/guide/schedule.zh.md',
     'packages/bundle/web-app/cordis.patch.yml',
@@ -109,6 +123,7 @@ describe('product identifiers', () => {
     'packages/client/ui-entry-customization/tests/menu.client.spec.tsx',
     'packages/client/ui-workspace/tests/workspaces-service.client.spec.ts',
     'packages/extensions/cordis-host-runner/tests/inspect-registry.spec.ts',
+    'scripts/gen-tool-catalog.ts',
     'snapshots/session/cordis-inspect-liveness/client-fixture.mjs',
     'snapshots/session/cordis-inspect-timeout/client-fixture.mjs',
   ])('preserves the product values in %s', (file) => {
@@ -166,6 +181,7 @@ describe('product identifiers', () => {
     ['packages/client/ui-entry-customization/tests/menu.client.spec.tsx', 1],
     ['packages/client/ui-workspace/tests/workspaces-service.client.spec.ts', 1],
     ['packages/extensions/cordis-host-runner/tests/inspect-registry.spec.ts', 2],
+    ['scripts/gen-tool-catalog.ts', 1],
     ['snapshots/session/cordis-inspect-liveness/client-fixture.mjs', 1],
     ['snapshots/session/cordis-inspect-timeout/client-fixture.mjs', 2],
   ] as const)('reverses real package references in %s and restores them', (file, lines) => {

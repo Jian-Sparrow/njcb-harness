@@ -477,8 +477,7 @@ function addPackage(file, root, snapshot, options) {
       version,
       sha256,
       bytes: bytes.length,
-      // Provenance for the person debugging this in six months. The bundle's
-      // own entries record the upstream URL; there is none for an upload.
+      // Uploaded archives use their filename because they have no registry URL.
       source: `upload:${path.basename(file)}`,
     };
   }

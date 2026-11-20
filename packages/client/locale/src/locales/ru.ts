@@ -33,8 +33,6 @@ export const ru = {
   'more': 'Ещё',
   'collapse': 'Свернуть',
   'expand': 'Развернуть',
-  'subtitle.expand': 'Развернуть описание {name}',
-  'subtitle.collapse': 'Свернуть описание {name}',
   'back': 'Назад',
   'brand.localBuild': 'njcb harness',
   'workspace.defaultName': 'Рабочая область по умолчанию',

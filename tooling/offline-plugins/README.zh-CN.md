@@ -2,7 +2,9 @@
 
 > 面向使用者的分步操作随包分发：ZIP 里的 `INSTALL-GUIDE.zh-CN.md`（装客户端、配模型、装插件、加新插件、排错）。该文件只存在于离线包，不入库，本文是运维/打包侧的技术说明。
 
-适用安装包：`njcb-harness-0.2.2-alpha.3.20261104.1-win-x64-unsigned.exe`，Harness 运行时 `0.2.2-alpha.3`。版本由 `selection.json` 选定、由提交在仓库里的 `selection-lock.json` 锁定（构建不再自行解析依赖，见下文「为什么依赖版本要锁死」）。此包提供 22 个插件——21 个来自 npm 上游，加上自建的插件市场 `dshmarket`——以及 Windows x64 的 npm 依赖和本地安装源，不包含模型服务。
+适用安装包：`njcb-harness-0.2.2-rc.5.20261120.1-win-x64-unsigned.exe`，Harness 运行时 `0.2.2-rc.5`。运行时和安装包版本由 `selection.json` 选定，插件依赖由提交在仓库里的 `selection-lock.json` 锁定（构建不再自行解析依赖，见下文「为什么依赖版本要锁死」）。此包提供 22 个插件——21 个来自 npm 上游，加上自建的插件市场 `dshmarket`——以及 Windows x64 的 npm 依赖和本地安装源，不包含模型服务。
+
+Windows 安装包流水线成功后，离线包流水线使用该次构建的安装包、SHA256 清单和同一源码提交完成验证。手动运行离线包流水线时，填写成功的 `njcb-main` Windows 安装包流水线运行 ID。
 
 ## 内网安装
 

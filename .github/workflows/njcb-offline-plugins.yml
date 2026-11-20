@@ -1,21 +1,46 @@
 name: NJCB offline plugins Windows x64
 on:
   workflow_dispatch:
-  push:
+    inputs:
+      installer_run_id:
+        description: Successful NJCB Windows installer workflow run ID
+        required: true
+        type: string
+  workflow_run:
+    workflows: ['njcb harness Windows x64']
+    types: [completed]
     branches: [njcb-main]
-    paths:
-      - '.github/workflows/njcb-offline-plugins.yml'
-      - 'tooling/offline-plugins/**'
 permissions:
   contents: read
   actions: read
 jobs:
   bundle:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: windows-2022
     timeout-minutes: 100
     steps:
+      - name: Resolve the successful installer build and source commit
+        id: installer
+        uses: actions/github-script@v7
+        env:
+          INSTALLER_RUN_ID: ${{ inputs.installer_run_id || github.event.workflow_run.id }}
+        with:
+          script: |
+            const runId = process.env.INSTALLER_RUN_ID;
+            if (!/^[1-9][0-9]*$/.test(runId)) throw new Error('An installer run ID is required');
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              ...context.repo, run_id: Number(runId),
+            });
+            if (run.path !== '.github/workflows/njcb-windows.yml' ||
+                run.head_branch !== 'njcb-main' || run.conclusion !== 'success' ||
+                run.head_repository?.full_name !== `${context.repo.owner}/${context.repo.repo}`) {
+              throw new Error('Select a successful njcb-main Windows installer build from this repository');
+            }
+            core.setOutput('run_id', runId);
+            core.setOutput('sha', run.head_sha);
       - uses: actions/checkout@v4
         with:
+          ref: ${{ steps.installer.outputs.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -23,7 +48,7 @@ jobs:
       - name: Verify the committed resolution lock still describes the selection
         run: node tooling/offline-plugins/build-bundle.mjs --check
       - name: Test read-only loopback registry and the publish script
-        run: node --test tooling/offline-plugins/serve.test.mjs tooling/offline-plugins/add-plugin.test.mjs tooling/offline-plugins/selection-lock.test.mjs
+        run: node --test tooling/offline-plugins/serve.test.mjs tooling/offline-plugins/add-plugin.test.mjs tooling/offline-plugins/selection-lock.test.mjs tooling/offline-plugins/release-version.test.mjs
       - name: Build original npm artifact snapshot
         run: node tooling/offline-plugins/build-bundle.mjs "${{ runner.temp }}/njcb-offline-plugins"
       - name: Include portable Windows Node and license
@@ -38,15 +63,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: njcb-harness-windows-x64
-          run-id: 41799861229
+          run-id: ${{ steps.installer.outputs.run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/njcb-installer
       - name: Verify cold-cache offline profile install using bundled CLI
         timeout-minutes: 10
         shell: pwsh
         run: |
-          $installer = Get-ChildItem '${{ runner.temp }}/njcb-installer' -Filter *.exe -Recurse | Select-Object -First 1
-          if ((Get-FileHash $installer.FullName).Hash.ToLowerInvariant() -ne 'c2e8ec6b4602aae579aa685b58b1c58deee85e9cc1ed1b9d38ad4d2272b10207') { throw 'Installer SHA256 mismatch' }
+          $selection = Get-Content tooling/offline-plugins/selection.json -Raw | ConvertFrom-Json
+          $filename = "njcb-harness-$($selection.installer)-win-x64-unsigned.exe"
+          $installer = Get-Item "${{ runner.temp }}/njcb-installer/$filename"
+          $checksum = (Get-Content '${{ runner.temp }}/njcb-installer/SHA256.txt' -Raw).Trim()
+          if ($checksum -notmatch '^([0-9a-f]{64})  (.+)$' -or $Matches[2] -cne $filename) { throw 'Invalid installer checksum manifest' }
+          if ((Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Matches[1]) { throw 'Installer SHA256 mismatch' }
           ./tooling/offline-plugins/verify-windows.ps1 -Bundle '${{ runner.temp }}/njcb-offline-plugins' -Installer $installer.FullName
       - name: Archive validated offline package
         shell: pwsh
@@ -54,7 +83,8 @@ jobs:
           $dest = '${{ runner.temp }}/delivery'
           New-Item -ItemType Directory -Force $dest | Out-Null
           $count = (Get-Content '${{ runner.temp }}/njcb-offline-plugins/plugins.txt' | Where-Object { $_.Trim() }).Count
-          $zip = "$dest/njcb-plugins-$count-win-x64-for-0.2.2-alpha.3.zip"
+          $selection = Get-Content tooling/offline-plugins/selection.json -Raw | ConvertFrom-Json
+          $zip = "$dest/njcb-plugins-$count-win-x64-for-$($selection.runtime).zip"
           & 7z a -tzip -mx=5 $zip '${{ runner.temp }}/njcb-offline-plugins/*'
           if ($LASTEXITCODE) { throw 'Archive failed' }
           "$((Get-FileHash $zip).Hash.ToLowerInvariant())  $(Split-Path $zip -Leaf)" | Set-Content "$dest/SHA256.txt" -Encoding ascii

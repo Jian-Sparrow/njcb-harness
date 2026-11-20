@@ -1,6 +1,6 @@
 {
-  "runtime": "0.2.2-alpha.3",
-  "installer": "0.2.2-alpha.3.20261104.1",
+  "runtime": "0.2.2-rc.5",
+  "installer": "0.2.2-rc.5.20261120.1",
   "platform": "win32-x64",
   "plugins": {
     "@linxin666/dsh-client-ui-skill-explorer": "0.4.14",

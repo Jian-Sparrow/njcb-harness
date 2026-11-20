@@ -27,7 +27,7 @@ kind: "package-group"
 
 **可选**表示用户显式选择该能力。**官方**表示项目维护并在插件页列出该包。两者均不表示成熟度；发布、默认安装和界面可见性也不决定成熟度。组外产品包承担维护职责，其公开 API 仍遵循仓库的预稳定政策。
 
-晋升需要明确的产品职责、公开行为与限制、当前消费者、发布内容以及测试证据。晋升时将包移入对应产品组，应用该组的命名规则，并同时更新受影响的消费者。[子树规则](AGENTS.md)规定依赖隔离和发布要求。
+晋升需要明确的产品职责、公开行为与限制、当前消费者、发布内容以及测试证据。晋升时将包移入对应产品组，并同时更新受影响的消费者。[子树规则](AGENTS.md)规定包命名、依赖隔离和发布要求。
 
 -----
 
@@ -45,6 +45,7 @@ kind: "package-group"
 | [`personalized-recommendations`](personalized-recommendations/README.zh.md) | 默认禁用的个性化页面、插件推荐及其操作卡片组合 | — |
 | [`tool-session-query`](tool-session-query/README.zh.md) | 按工作区授权的模型会话搜索、追踪与事件读取 | — |
 | [`session-search`](session-search/README.zh.md) | 可选实验性全局会话搜索工具 | — |
+| [`deepseek-chat-import`](deepseek-chat-import/README.zh.md) | 可选上传 DeepSeek 官网会话导出，存为所选工作区中的会话 | `ctx.deepseekChatImport` |
 | [`ralph-bundle`](ralph-bundle/README.zh.md) | 带隔离 workflow 引擎的可选重复委派 | — |
 | [`terminal-bundle`](terminal-bundle/README.zh.md) | 可选全局持久终端工具 | — |
 | [`badge-skill-bundle`](badge-skill-bundle/README.zh.md) | 可选 powered-by-dsh 徽章技能 | — |
@@ -56,6 +57,7 @@ kind: "package-group"
 | [`webhook-github`](webhook-github/README.zh.md) | 带签名的 GitHub webhook 入口 | — |
 | [`session-title-all-prompts-llm`](session-title-all-prompts-llm/README.zh.md) | 根据所有人类提示生成会话标题 | — |
 | [`tool-terminal`](tool-terminal/README.zh.md) | 持久终端工具 | — |
+| [`terminal-panel`](terminal-panel/README.zh.md) | Web 侧栏中的 Agent 终端与只读的用户终端工具 | — |
 | [`tool-ralph`](tool-ralph/README.zh.md) | 有界重复委派任务 | — |
 | [`skill-badge`](skill-badge/README.zh.md) | powered-by-dsh 徽章技能 | — |
 | [`translator`](translator/README.zh.md) | 免登录 Google 与 Bing 文本翻译 | `ctx.translator` |

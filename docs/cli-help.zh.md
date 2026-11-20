@@ -28,7 +28,7 @@
 Usage: dsh [--profile] <name> [options] [app-args...]
        dsh plugin --profile <name> <pnpm-args...>
 
-dsh: boot a DeepSeek Harness profile — an ordered stack of plugin-bundle patch
+dsh: boot a njcb harness profile — an ordered stack of plugin-bundle patch
 layers under your own overrides.
 
 Arguments:
@@ -180,7 +180,7 @@ Example:
 ```text
 Usage: dsh --profile web [options]
 
-Serve the DeepSeek Harness browser UI.
+Serve the njcb harness browser UI.
 
 Options:
   --host <host>                  bind address: one concrete IPv4 or IPv6 literal

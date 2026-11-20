@@ -7,6 +7,11 @@ function messages(source: string): string[] {
 }
 
 describe('Client UI i18n source check', () => {
+  it('preserves the NJCB wordmark while rejecting surrounding untranslated copy', () => {
+    expect(messages('<svg><text>njcb harness</text><text>Open njcb harness</text></svg>'))
+      .toEqual(['Open njcb harness'])
+  })
+
   it('rejects direct JSX copy and copy-bearing attributes', () => {
     expect(messages(`
       const View = ({ ready }: { ready: boolean }) => <section aria-label="Overview">
